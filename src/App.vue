@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import * as THREE from "three"
 import GUI from 'lil-gui';
-import { onMounted, useTemplateRef } from 'vue'
+import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 
 /**
@@ -21,11 +21,71 @@ const gltfLoader = new GLTFLoader()
 
 
 
-const material = new THREE.Mesh(
-  new THREE.BoxGeometry(1, 1, 1),
-  new THREE.MeshBasicMaterial({ color: 0xECA400, })
-)
-scene.add(material)
+
+/**
+ * Materials
+ */
+const closestDistance = -50;
+const farDistance = 50
+const unusedBoxes: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>[] = []
+const color = ['#5d2e8c', '#ccff66', '#2EC4B6']
+
+const BoxGeometry = new THREE.BoxGeometry(1, 0.1, 1)
+
+
+const boxes = ref<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>[]>([])
+
+
+const lastBoxPosition = computed(() => {
+  if (boxes.value.length === 0) {
+    return 0
+  }
+  return boxes.value[boxes.value.length - 1].position.z
+})
+
+function createBox() {
+  const BoxGeometry = new THREE.BoxGeometry(1, 0.1, 1)
+  const BoxMaterial = new THREE.MeshBasicMaterial()
+
+  let box: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap> | undefined
+  if (unusedBoxes.length > 0) {
+    box = unusedBoxes.pop()
+  }
+  else {
+    box = new THREE.Mesh(BoxGeometry, BoxMaterial)
+    box.material.color.set(color[Math.min(Math.round(Math.random() * color.length), 2)])
+    scene.add(box)
+  }
+
+  box!.position.z = lastBoxPosition.value - (boxes.value.length ? 1 : 0)
+  boxes.value.push(box!)
+
+}
+
+function spawner() {
+  const closest = lastBoxPosition.value
+  if (closest > closestDistance) {
+    createBox()
+  }
+}
+
+for (let i = 0; i < 30; i++) {
+  createBox()
+}
+// for (let i = 0; i < 10; i++) {
+//   const BoxMaterial = new THREE.MeshBasicMaterial()
+//   const box = new THREE.Mesh(BoxGeometry, BoxMaterial)
+//   box.material.color.set(color[Math.min(Math.round(Math.random() * color.length), 2)])
+
+//   boxes.push(box)
+
+//   box.position.z -= i
+
+//   scene.add(box)
+
+
+
+// }
 onMounted(() => {
 
 
@@ -48,6 +108,7 @@ onMounted(() => {
 
   const camera = new THREE.PerspectiveCamera(25, sizes.width / sizes.height, 0.1, 100)
   camera.position.z = 7
+  camera.position.y = 1
   scene.add(camera)
 
   // Controls
@@ -94,6 +155,21 @@ onMounted(() => {
 
     // Call tick again on the next frame
     window.requestAnimationFrame(tick)
+
+    // update materials
+    boxes.value.forEach((box) => {
+      box.position.z += 0.1
+
+      if (box.position.z > 5) {
+        console.log(lastBoxPosition.value)
+        box.position.z = lastBoxPosition.value - 1
+        // unusedBoxes.push(box)
+        boxes.value.push(box)
+        boxes.value.shift()
+      }
+    })
+    // spawner()
+
   }
 
   tick()
@@ -106,15 +182,6 @@ onMounted(() => {
 </script>
 
 <template>
-  <!-- <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
-  </div>
-  <HelloWorld msg="Vite + Vue" /> -->
   <canvas class="webgl" ref="canvas"></canvas>
 </template>
 
