@@ -3,12 +3,15 @@ import * as THREE from "three"
 import GUI from 'lil-gui';
 import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
-
+import Stats from "three/examples/jsm/libs/stats.module.js";
+import gsap from "gsap";
 /**
  * Base
  */
 // Debug
 const gui = new GUI();
+const stats = new Stats()
+document.body.appendChild(stats.dom)
 
 // Canvas
 const canvas = useTemplateRef('canvas')
@@ -57,7 +60,7 @@ function createBox() {
     scene.add(box)
   }
 
-  box!.position.z = lastBoxPosition.value - (boxes.value.length ? 1 : 0)
+  box!.position.z = lastBoxPosition.value - (boxes.value.length ? 1 : -3)
   boxes.value.push(box!)
 
 }
@@ -72,20 +75,16 @@ function spawner() {
 for (let i = 0; i < 30; i++) {
   createBox()
 }
-// for (let i = 0; i < 10; i++) {
-//   const BoxMaterial = new THREE.MeshBasicMaterial()
-//   const box = new THREE.Mesh(BoxGeometry, BoxMaterial)
-//   box.material.color.set(color[Math.min(Math.round(Math.random() * color.length), 2)])
-
-//   boxes.push(box)
-
-//   box.position.z -= i
-
-//   scene.add(box)
 
 
 
-// }
+// mouse
+
+const mouse = new THREE.Mesh(new THREE.SphereGeometry(0.15), new THREE.MeshBasicMaterial())
+mouse.position.y = 0.2
+mouse.position.z = 3
+
+scene.add(mouse)
 onMounted(() => {
 
 
@@ -143,6 +142,90 @@ onMounted(() => {
     renderer.setPixelRatio(sizes.pixelRatio)
   })
 
+
+
+  // keyboard event 
+  const jump = ref(false)
+  window.addEventListener('keydown', (e) => {
+    if (e.target === document.body) {
+      const code = e.code
+
+      const arrowRight = 'ArrowRight'
+      const arrowLeft = 'ArrowLeft'
+      const arrowUp = 'ArrowUp'
+      const arrowDown = 'ArrowDown'
+
+      if ([arrowRight, arrowLeft, arrowUp, arrowDown].includes(code)) {
+        e.preventDefault()
+        const step = 0.3
+        switch (code) {
+          case arrowLeft:
+
+            if (mouse.position.x === 0) {
+              gsap.to(mouse.position, {
+                duration: 0.2,
+                ease: "power2.out",
+                x: "-0.3"
+              });
+            }
+            if (mouse.position.x === 0.3) {
+              gsap.to(mouse.position, {
+                duration: 0.2,
+                ease: "power2.out",
+                x: "0"
+              });
+            }
+
+            break;
+          case arrowRight:
+            if (mouse.position.x === 0) {
+              gsap.to(mouse.position, {
+                duration: 0.2,
+                ease: "power2.out",
+                x: "0.3"
+              });
+            }
+            if (mouse.position.x === -0.3) {
+              gsap.to(mouse.position, {
+                duration: 0.2,
+                ease: "power2.out",
+                x: "0"
+              });
+            }
+            break;
+          case arrowUp:
+            if (!jump.value) {
+              jump.value = true
+              gsap.to(
+                mouse.position, {
+                y: 0.4,
+                duration: 0.25,
+                ease: "power1.out",
+                onComplete: () => {
+                  gsap.to(mouse.position, {
+                    y: 0.2, // Return to original height
+                    duration: 0.25,
+                    ease: "bounce.out",
+                    onComplete: () => {
+                      jump.value = false
+                    }
+                  });
+                }
+              }
+              )
+
+            }
+            console.log('up')
+            break;
+          case arrowDown:
+            console.log('down')
+            break;
+
+        }
+      }
+    }
+  })
+
   const clock = new THREE.Clock()
   const tick = () => {
     const elapsedTime = clock.getElapsedTime()
@@ -158,10 +241,9 @@ onMounted(() => {
 
     // update materials
     boxes.value.forEach((box) => {
-      box.position.z += 0.1
+      box.position.z += 0.01
 
       if (box.position.z > 5) {
-        console.log(lastBoxPosition.value)
         box.position.z = lastBoxPosition.value - 1
         // unusedBoxes.push(box)
         boxes.value.push(box)
@@ -169,6 +251,9 @@ onMounted(() => {
       }
     })
     // spawner()
+
+    // debug
+    stats.update()
 
   }
 
