@@ -47,7 +47,7 @@ const lastBoxPosition = computed(() => {
 })
 
 function createBox() {
-  const BoxGeometry = new THREE.BoxGeometry(1, 0.1, 1)
+  const BoxGeometry = new THREE.BoxGeometry(2.1, 0.1, 1)
   const BoxMaterial = new THREE.MeshBasicMaterial()
 
   let box: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap> | undefined
@@ -77,11 +77,45 @@ for (let i = 0; i < 30; i++) {
 }
 
 
+// obstacles
+const walls = ref<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>[]>([])
+
+const lastWallPosition = computed(() => {
+  if (walls.value.length === 0) {
+    return 0
+  }
+  return walls.value[walls.value.length - 1].position.z
+})
+
+const wallGeometry = new THREE.BoxGeometry(0.7, 1, 0.1)
+function createWall() {
+  const wallMaterial = new THREE.MeshBasicMaterial()
+
+  let wall: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap> | undefined
+  if (unusedBoxes.length > 0) {
+    wall = unusedBoxes.pop()
+  }
+  else {
+    wall = new THREE.Mesh(wallGeometry, wallMaterial)
+    console.log(wall)
+    wall.material.color.set('#8DA9C4')
+    wall.position.y = 0.5
+    scene.add(wall)
+  }
+
+  wall!.position.z = lastWallPosition.value - (walls.value.length ? 2 : 2)
+  walls.value.push(wall!)
+
+}
+for (let i = 0; i < 30; i++) {
+  createWall()
+}
+
 
 // mouse
 
-const mouse = new THREE.Mesh(new THREE.SphereGeometry(0.15), new THREE.MeshBasicMaterial())
-mouse.position.y = 0.2
+const mouse = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshBasicMaterial())
+mouse.position.y = 0.4
 mouse.position.z = 3
 
 scene.add(mouse)
@@ -157,7 +191,6 @@ onMounted(() => {
 
       if ([arrowRight, arrowLeft, arrowUp, arrowDown].includes(code)) {
         e.preventDefault()
-        const step = 0.3
         switch (code) {
           case arrowLeft:
 
@@ -165,10 +198,10 @@ onMounted(() => {
               gsap.to(mouse.position, {
                 duration: 0.2,
                 ease: "power2.out",
-                x: "-0.3"
+                x: "-0.4"
               });
             }
-            if (mouse.position.x === 0.3) {
+            if (mouse.position.x === 0.4) {
               gsap.to(mouse.position, {
                 duration: 0.2,
                 ease: "power2.out",
@@ -182,10 +215,10 @@ onMounted(() => {
               gsap.to(mouse.position, {
                 duration: 0.2,
                 ease: "power2.out",
-                x: "0.3"
+                x: "0.4"
               });
             }
-            if (mouse.position.x === -0.3) {
+            if (mouse.position.x === -0.4) {
               gsap.to(mouse.position, {
                 duration: 0.2,
                 ease: "power2.out",
@@ -198,12 +231,12 @@ onMounted(() => {
               jump.value = true
               gsap.to(
                 mouse.position, {
-                y: 0.4,
+                y: 0.6,
                 duration: 0.25,
                 ease: "power1.out",
                 onComplete: () => {
                   gsap.to(mouse.position, {
-                    y: 0.2, // Return to original height
+                    y: 0.4, // Return to original height
                     duration: 0.25,
                     ease: "bounce.out",
                     onComplete: () => {
@@ -248,6 +281,18 @@ onMounted(() => {
         // unusedBoxes.push(box)
         boxes.value.push(box)
         boxes.value.shift()
+      }
+    })
+
+
+    walls.value.forEach((wall) => {
+      wall.position.z += 0.01
+
+      if (wall.position.z > 5) {
+        wall.position.z = lastWallPosition.value - 1
+        // unusedWalls.push(wall)
+        walls.value.push(wall)
+        walls.value.shift()
       }
     })
     // spawner()
