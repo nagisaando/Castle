@@ -47,7 +47,7 @@ const lastBoxPosition = computed(() => {
 })
 
 function createBox() {
-  const BoxGeometry = new THREE.BoxGeometry(2.1, 0.1, 1)
+  const BoxGeometry = new THREE.BoxGeometry(2.1, 0.1, 2.1)
   const BoxMaterial = new THREE.MeshBasicMaterial()
 
   let box: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap> | undefined
@@ -60,7 +60,7 @@ function createBox() {
     scene.add(box)
   }
 
-  box!.position.z = lastBoxPosition.value - (boxes.value.length ? 1 : -3)
+  box!.position.z = lastBoxPosition.value - (boxes.value.length ? 2.1 : -3)
   boxes.value.push(box!)
 
 }
@@ -78,36 +78,107 @@ for (let i = 0; i < 30; i++) {
 
 
 // obstacles
-const walls = ref<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>[]>([])
+const walls = ref<{
+  wall1: {
+    obj: THREE.Mesh,
+    open: boolean,
+    opened: boolean,
+  }
+  wall2: {
+    obj: THREE.Mesh,
+    open: boolean,
+    opened: boolean
+  },
+  wall3: {
+    obj: THREE.Mesh,
+    open: boolean,
+    opened: boolean
+  },
+  hide: boolean
+
+}[]>([])
 
 const lastWallPosition = computed(() => {
   if (walls.value.length === 0) {
     return 0
   }
-  return walls.value[walls.value.length - 1].position.z
+  return walls.value[walls.value.length - 1].wall1.obj.position.z
 })
 
-const wallGeometry = new THREE.BoxGeometry(0.7, 1, 0.1)
+const wallGeometry = new THREE.BoxGeometry(0.7, 1.5, 0.1)
 function createWall() {
-  const wallMaterial = new THREE.MeshBasicMaterial()
+  const wallMaterial1 = new THREE.MeshBasicMaterial({
+    color: '#CF5C36',
+    transparent: true
+  })
+  const wallMaterial2 = new THREE.MeshBasicMaterial({
+    color: '#EEE5E9',
+    transparent: true
+  })
+  const wallMaterial3 = new THREE.MeshBasicMaterial({
+    color: '#EFC88B',
+    transparent: true
+  })
 
-  let wall: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap> | undefined
-  if (unusedBoxes.length > 0) {
-    wall = unusedBoxes.pop()
-  }
-  else {
-    wall = new THREE.Mesh(wallGeometry, wallMaterial)
-    console.log(wall)
-    wall.material.color.set('#8DA9C4')
-    wall.position.y = 0.5
-    scene.add(wall)
+  let wall1: THREE.Mesh
+  let wall2: THREE.Mesh
+  let wall3: THREE.Mesh
+  // if (unusedBoxes.length > 0) {
+  //   wall1 = unusedBoxes.pop()
+  //   wall2 = unusedBoxes.pop()
+  //   wall3 = unusedBoxes.pop()
+  // }
+  // else {
+  wall1 = new THREE.Mesh(wallGeometry, wallMaterial1)
+  wall1.position.y = 0.75
+
+  wall2 = new THREE.Mesh(wallGeometry, wallMaterial2)
+  wall2.position.y = 0.75
+
+  wall3 = new THREE.Mesh(wallGeometry, wallMaterial3)
+  wall3.position.y = 0.75
+
+
+  wall1!.position.z = lastWallPosition.value - (walls.value.length ? 8 : 2)
+  wall1!.position.x = -0.7
+
+  wall2!.position.z = lastWallPosition.value - (walls.value.length ? 8.1 : 2.1)
+
+  wall3!.position.z = lastWallPosition.value - (walls.value.length ? 8 : 2)
+  wall3!.position.x = 0.7
+
+
+  scene.add(wall1)
+  scene.add(wall2)
+  scene.add(wall3)
+
+  const wallGroup = {
+    wall1: {
+      obj: wall1,
+      open: false,
+      opened: false
+    },
+    wall2: {
+      obj: wall2,
+      open: false,
+      opened: false
+    },
+    wall3: {
+      obj: wall3,
+      open: false,
+      opened: false
+    },
+    hide: false
   }
 
-  wall!.position.z = lastWallPosition.value - (walls.value.length ? 2 : 2)
-  walls.value.push(wall!)
+  const wallsToOpen = ['wall1', 'wall2', 'wall3'] as const
+  const randomWall = wallsToOpen[Math.floor(Math.random() * 3)]
+  wallGroup[randomWall].open = true
+
+  walls.value.push(wallGroup)
 
 }
-for (let i = 0; i < 30; i++) {
+for (let i = 0; i < 6; i++) {
   createWall()
 }
 
@@ -198,15 +269,26 @@ onMounted(() => {
               gsap.to(mouse.position, {
                 duration: 0.2,
                 ease: "power2.out",
-                x: "-0.4"
+                x: "-0.65"
+              });
+              gsap.to(camera.position, {
+                duration: 0.2,
+                ease: "power2.out",
+                x: "-0.65"
               });
             }
-            if (mouse.position.x === 0.4) {
+            if (mouse.position.x === 0.65) {
               gsap.to(mouse.position, {
                 duration: 0.2,
                 ease: "power2.out",
                 x: "0"
               });
+              gsap.to(camera.position, {
+                duration: 0.2,
+                ease: "power2.out",
+                x: "0"
+              });
+
             }
 
             break;
@@ -215,15 +297,25 @@ onMounted(() => {
               gsap.to(mouse.position, {
                 duration: 0.2,
                 ease: "power2.out",
-                x: "0.4"
+                x: "0.65"
+              });
+              gsap.to(camera.position, {
+                duration: 0.2,
+                ease: "power2.out",
+                x: "0.65"
               });
             }
-            if (mouse.position.x === -0.4) {
+            if (mouse.position.x === -0.65) {
               gsap.to(mouse.position, {
                 duration: 0.2,
                 ease: "power2.out",
                 x: "0"
               });
+              gsap.to(camera.position, {
+                duration: 0.2,
+                ease: "power2.out",
+                x: "0"
+              })
             }
             break;
           case arrowUp:
@@ -273,29 +365,119 @@ onMounted(() => {
     window.requestAnimationFrame(tick)
 
     // update materials
-    boxes.value.forEach((box) => {
-      box.position.z += 0.01
+    // boxes.value.forEach((box) => {
+    //   box.position.z += 0.01
 
-      if (box.position.z > 5) {
-        box.position.z = lastBoxPosition.value - 1
-        // unusedBoxes.push(box)
-        boxes.value.push(box)
-        boxes.value.shift()
-      }
-    })
+    //   if (box.position.z > 5) {
+    //     box.position.z = lastBoxPosition.value - 1
+    //     // unusedBoxes.push(box)
+    //     boxes.value.push(box)
+    //     boxes.value.shift()
+    //   }
+    // })
 
 
     walls.value.forEach((wall) => {
-      wall.position.z += 0.01
+      wall.wall1.obj.position.z += 0.01
+      wall.wall2.obj.position.z += 0.01
+      wall.wall3.obj.position.z += 0.01
 
-      if (wall.position.z > 5) {
-        wall.position.z = lastWallPosition.value - 1
+      if (wall.wall1.obj.position.z > -1 && wall.wall1.open && !wall.wall1.opened) {
+        wall.wall1.opened = true
+        gsap.to(wall.wall1.obj.position, {
+          x: '+=0.7',
+          duration: 0.2,
+          ease: "power2.out",
+        })
+
+      }
+
+      if (wall.wall2.obj.position.z > -1 && wall.wall2.open && !wall.wall2.opened) {
+        wall.wall2.opened = true
+        gsap.to(wall.wall2.obj.position, {
+          x: '+=0.7',
+          duration: 0.2,
+          ease: "power2.out",
+        })
+
+      }
+
+      if (wall.wall3.obj.position.z > -1 && wall.wall3.open && !wall.wall3.opened) {
+        wall.wall3.opened = true
+        gsap.to(wall.wall3.obj.position, {
+          x: '-=0.7',
+          duration: 0.2,
+          ease: "power2.out",
+        })
+
+      }
+
+
+
+
+      if (!wall.hide && wall.wall2.obj.position.z > 2) {
+        wall.hide = true
+        gsap.to(wall.wall1.obj.material, {
+          opacity: '0',
+          duration: 3,
+          ease: "slow(0.9,0.4,false)",
+        })
+        gsap.to(wall.wall2.obj.material, {
+          opacity: '0',
+          duration: 3,
+          ease: "slow(0.9,0.4,false)",
+        })
+        gsap.to(wall.wall3.obj.material, {
+          opacity: '0',
+          duration: 3,
+          ease: "slow(0.9,0.4,false)",
+        })
+
+      }
+      if (wall.wall1.obj.position.z > 5) {
+        wall.wall1.obj.position.z = lastWallPosition.value - 8
+        wall.wall1.obj.position.x = -0.7
+
+        wall.wall2.obj.position.z = lastWallPosition.value - 8.1
+        wall.wall2.obj.position.x = 0
+
+
+        wall.wall3.obj.position.z = lastWallPosition.value - 8
+        wall.wall3.obj.position.x = 0.7
+
+
+
+
+        const wallGroup = {
+          wall1: {
+            obj: wall.wall1.obj,
+            open: false,
+            opened: false
+          },
+          wall2: {
+            obj: wall.wall2.obj,
+            open: false,
+            opened: false
+          },
+          wall3: {
+            obj: wall.wall3.obj,
+            open: false,
+            opened: false
+          },
+          hide: false
+        }
+        const wallsToOpen = ['wall1', 'wall2', 'wall3'] as const
+        const randomWall = wallsToOpen[Math.floor(Math.random() * 3)]
+        wallGroup[randomWall].open = true
+
+
+
         // unusedWalls.push(wall)
-        walls.value.push(wall)
+        walls.value.push(wallGroup)
         walls.value.shift()
       }
     })
-    // spawner()
+    spawner()
 
     // debug
     stats.update()
