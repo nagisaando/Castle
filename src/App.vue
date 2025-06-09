@@ -378,9 +378,9 @@ onMounted(() => {
 
 
     walls.value.forEach((wall) => {
-      wall.wall1.obj.position.z += 0.01
-      wall.wall2.obj.position.z += 0.01
-      wall.wall3.obj.position.z += 0.01
+      wall.wall1.obj.position.z += 0.03
+      wall.wall2.obj.position.z += 0.03
+      wall.wall3.obj.position.z += 0.03
 
       if (wall.wall1.obj.position.z > -1 && wall.wall1.open && !wall.wall1.opened) {
         wall.wall1.opened = true
@@ -415,7 +415,7 @@ onMounted(() => {
 
 
 
-      if (!wall.hide && wall.wall2.obj.position.z > 2) {
+      if (!wall.hide && wall.wall2.obj.position.z > 1.8) {
         wall.hide = true
         gsap.to(wall.wall1.obj.material, {
           opacity: '0',
