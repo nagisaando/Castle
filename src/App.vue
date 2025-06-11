@@ -98,6 +98,19 @@ const walls = ref<{
 
 }[]>([])
 
+const wallMesh = new THREE.Mesh(
+  new THREE.BoxGeometry(0.7, 1.5, 0.1),
+  new THREE.MeshBasicMaterial()
+)
+const wall1BoundBox = new THREE.Box3()
+wall1BoundBox.setFromObject(wallMesh)
+
+const wall2BoundBox = new THREE.Box3()
+wall2BoundBox.setFromObject(wallMesh)
+
+const wall3BoundBox = new THREE.Box3()
+wall3BoundBox.setFromObject(wallMesh)
+
 const lastWallPosition = computed(() => {
   if (walls.value.length === 0) {
     return 0
@@ -106,6 +119,7 @@ const lastWallPosition = computed(() => {
 })
 
 const wallGeometry = new THREE.BoxGeometry(0.7, 1.5, 0.1)
+
 function createWall() {
   const wallMaterial1 = new THREE.MeshBasicMaterial({
     color: '#CF5C36',
@@ -189,6 +203,8 @@ const mouse = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshBasicM
 mouse.position.y = 0.4
 mouse.position.z = 3
 
+const mouseBoundSphere = new THREE.Sphere(mouse.position, 0.25)
+console.log(mouseBoundSphere)
 scene.add(mouse)
 onMounted(() => {
 
@@ -503,8 +519,15 @@ onMounted(() => {
         walls.value.push(wallGroup)
         walls.value.shift()
       }
+
+
     })
-    spawner()
+    // spawner()
+
+    // update boundbox
+    mouseBoundSphere.copy(mouse.geometry!.boundingSphere).applyMatrix4(mouse.matrixWorld)
+
+
 
     // debug
     stats.update()
