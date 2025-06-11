@@ -22,7 +22,7 @@ const scene = new THREE.Scene()
 // Loaders
 const gltfLoader = new GLTFLoader()
 
-
+const gameover = ref(false)
 
 
 /**
@@ -378,9 +378,9 @@ onMounted(() => {
 
 
     walls.value.forEach((wall) => {
-      wall.wall1.obj.position.z += 0.03
-      wall.wall2.obj.position.z += 0.03
-      wall.wall3.obj.position.z += 0.03
+      wall.wall1.obj.position.z += 0.01
+      wall.wall2.obj.position.z += 0.01
+      wall.wall3.obj.position.z += 0.01
 
       if (wall.wall1.obj.position.z > -1 && wall.wall1.open && !wall.wall1.opened) {
         wall.wall1.opened = true
@@ -419,31 +419,58 @@ onMounted(() => {
         wall.hide = true
         gsap.to(wall.wall1.obj.material, {
           opacity: '0',
-          duration: 3,
+          duration: 2,
           ease: "slow(0.9,0.4,false)",
+          yoyo: true,
+
+        })
+        gsap.set(wall.wall1.obj.material, {
+          opacity: '1',
+          delay: 2
+
         })
         gsap.to(wall.wall2.obj.material, {
           opacity: '0',
-          duration: 3,
+          duration: 2,
           ease: "slow(0.9,0.4,false)",
+          yoyo: true
         })
+
+        gsap.set(wall.wall2.obj.material, {
+          opacity: '1',
+          delay: 2
+
+        })
+
         gsap.to(wall.wall3.obj.material, {
           opacity: '0',
-          duration: 3,
+          duration: 2,
           ease: "slow(0.9,0.4,false)",
+          yoyo: true
+        })
+
+        gsap.set(wall.wall3.obj.material, {
+          opacity: '1',
+          delay: 2
+
         })
 
       }
+
+
       if (wall.wall1.obj.position.z > 5) {
         wall.wall1.obj.position.z = lastWallPosition.value - 8
         wall.wall1.obj.position.x = -0.7
+
 
         wall.wall2.obj.position.z = lastWallPosition.value - 8.1
         wall.wall2.obj.position.x = 0
 
 
+
         wall.wall3.obj.position.z = lastWallPosition.value - 8
         wall.wall3.obj.position.x = 0.7
+
 
 
 
