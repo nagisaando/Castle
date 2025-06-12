@@ -22,8 +22,9 @@ const scene = new THREE.Scene()
 // Loaders
 const gltfLoader = new GLTFLoader()
 
-const gameover = ref(false)
+// const gameover = ref(false)
 
+let gameOver = false
 
 /**
  * Materials
@@ -82,34 +83,37 @@ const walls = ref<{
   wall1: {
     obj: THREE.Mesh,
     open: boolean,
+    boundingBox: THREE.Box3,
     opened: boolean,
   }
   wall2: {
     obj: THREE.Mesh,
     open: boolean,
+    boundingBox: THREE.Box3,
     opened: boolean
   },
   wall3: {
     obj: THREE.Mesh,
     open: boolean,
+    boundingBox: THREE.Box3,
     opened: boolean
   },
   hide: boolean
 
 }[]>([])
 
-const wallMesh = new THREE.Mesh(
-  new THREE.BoxGeometry(0.7, 1.5, 0.1),
-  new THREE.MeshBasicMaterial()
-)
-const wall1BoundBox = new THREE.Box3()
-wall1BoundBox.setFromObject(wallMesh)
+// const wallMesh = new THREE.Mesh(
+//   new THREE.BoxGeometry(0.7, 1.5, 0.1),
+//   new THREE.MeshBasicMaterial()
+// )
+// const wall1BoundBox = new THREE.Box3()
+// wall1BoundBox.setFromObject(wallMesh)
 
-const wall2BoundBox = new THREE.Box3()
-wall2BoundBox.setFromObject(wallMesh)
+// const wall2BoundBox = new THREE.Box3()
+// wall2BoundBox.setFromObject(wallMesh)
 
-const wall3BoundBox = new THREE.Box3()
-wall3BoundBox.setFromObject(wallMesh)
+// const wall3BoundBox = new THREE.Box3()
+// wall3BoundBox.setFromObject(wallMesh)
 
 const lastWallPosition = computed(() => {
   if (walls.value.length === 0) {
@@ -161,6 +165,10 @@ function createWall() {
   wall3!.position.z = lastWallPosition.value - (walls.value.length ? 8 : 2)
   wall3!.position.x = 0.7
 
+  // we have to call this to use Local-space box
+  // wall1.geometry.computeBoundingBox();
+  // wall2.geometry.computeBoundingBox();
+  // wall3.geometry.computeBoundingBox();
 
   scene.add(wall1)
   scene.add(wall2)
@@ -170,16 +178,20 @@ function createWall() {
     wall1: {
       obj: wall1,
       open: false,
+      boundingBox: new THREE.Box3(),
       opened: false
+
     },
     wall2: {
       obj: wall2,
       open: false,
+      boundingBox: new THREE.Box3(),
       opened: false
     },
     wall3: {
       obj: wall3,
       open: false,
+      boundingBox: new THREE.Box3(),
       opened: false
     },
     hide: false
@@ -200,7 +212,7 @@ for (let i = 0; i < 6; i++) {
 // mouse
 
 const mouse = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshBasicMaterial())
-mouse.position.y = 0.4
+mouse.position.y = 0.3
 mouse.position.z = 3
 
 const mouseBoundSphere = new THREE.Sphere(mouse.position, 0.25)
@@ -287,11 +299,11 @@ onMounted(() => {
                 ease: "power2.out",
                 x: "-0.65"
               });
-              gsap.to(camera.position, {
-                duration: 0.2,
-                ease: "power2.out",
-                x: "-0.65"
-              });
+              // gsap.to(camera.position, {
+              //   duration: 0.2,
+              //   ease: "power2.out",
+              //   x: "-0.65"
+              // });
             }
             if (mouse.position.x === 0.65) {
               gsap.to(mouse.position, {
@@ -299,11 +311,11 @@ onMounted(() => {
                 ease: "power2.out",
                 x: "0"
               });
-              gsap.to(camera.position, {
-                duration: 0.2,
-                ease: "power2.out",
-                x: "0"
-              });
+              // gsap.to(camera.position, {
+              //   duration: 0.2,
+              //   ease: "power2.out",
+              //   x: "0"
+              // });
 
             }
 
@@ -315,11 +327,11 @@ onMounted(() => {
                 ease: "power2.out",
                 x: "0.65"
               });
-              gsap.to(camera.position, {
-                duration: 0.2,
-                ease: "power2.out",
-                x: "0.65"
-              });
+              // gsap.to(camera.position, {
+              //   duration: 0.2,
+              //   ease: "power2.out",
+              //   x: "0.65"
+              // });
             }
             if (mouse.position.x === -0.65) {
               gsap.to(mouse.position, {
@@ -327,11 +339,11 @@ onMounted(() => {
                 ease: "power2.out",
                 x: "0"
               });
-              gsap.to(camera.position, {
-                duration: 0.2,
-                ease: "power2.out",
-                x: "0"
-              })
+              // gsap.to(camera.position, {
+              //   duration: 0.2,
+              //   ease: "power2.out",
+              //   x: "0"
+              // })
             }
             break;
           case arrowUp:
@@ -379,156 +391,195 @@ onMounted(() => {
 
     // Call tick again on the next frame
     window.requestAnimationFrame(tick)
+    if (!gameOver) {
+      // update materials
+      boxes.value.forEach((box) => {
+        box.position.z += 0.01
 
-    // update materials
-    // boxes.value.forEach((box) => {
-    //   box.position.z += 0.01
-
-    //   if (box.position.z > 5) {
-    //     box.position.z = lastBoxPosition.value - 1
-    //     // unusedBoxes.push(box)
-    //     boxes.value.push(box)
-    //     boxes.value.shift()
-    //   }
-    // })
-
-
-    walls.value.forEach((wall) => {
-      wall.wall1.obj.position.z += 0.01
-      wall.wall2.obj.position.z += 0.01
-      wall.wall3.obj.position.z += 0.01
-
-      if (wall.wall1.obj.position.z > -1 && wall.wall1.open && !wall.wall1.opened) {
-        wall.wall1.opened = true
-        gsap.to(wall.wall1.obj.position, {
-          x: '+=0.7',
-          duration: 0.2,
-          ease: "power2.out",
-        })
-
-      }
-
-      if (wall.wall2.obj.position.z > -1 && wall.wall2.open && !wall.wall2.opened) {
-        wall.wall2.opened = true
-        gsap.to(wall.wall2.obj.position, {
-          x: '+=0.7',
-          duration: 0.2,
-          ease: "power2.out",
-        })
-
-      }
-
-      if (wall.wall3.obj.position.z > -1 && wall.wall3.open && !wall.wall3.opened) {
-        wall.wall3.opened = true
-        gsap.to(wall.wall3.obj.position, {
-          x: '-=0.7',
-          duration: 0.2,
-          ease: "power2.out",
-        })
-
-      }
-
-
-
-
-      if (!wall.hide && wall.wall2.obj.position.z > 1.8) {
-        wall.hide = true
-        gsap.to(wall.wall1.obj.material, {
-          opacity: '0',
-          duration: 2,
-          ease: "slow(0.9,0.4,false)",
-          yoyo: true,
-
-        })
-        gsap.set(wall.wall1.obj.material, {
-          opacity: '1',
-          delay: 2
-
-        })
-        gsap.to(wall.wall2.obj.material, {
-          opacity: '0',
-          duration: 2,
-          ease: "slow(0.9,0.4,false)",
-          yoyo: true
-        })
-
-        gsap.set(wall.wall2.obj.material, {
-          opacity: '1',
-          delay: 2
-
-        })
-
-        gsap.to(wall.wall3.obj.material, {
-          opacity: '0',
-          duration: 2,
-          ease: "slow(0.9,0.4,false)",
-          yoyo: true
-        })
-
-        gsap.set(wall.wall3.obj.material, {
-          opacity: '1',
-          delay: 2
-
-        })
-
-      }
-
-
-      if (wall.wall1.obj.position.z > 5) {
-        wall.wall1.obj.position.z = lastWallPosition.value - 8
-        wall.wall1.obj.position.x = -0.7
-
-
-        wall.wall2.obj.position.z = lastWallPosition.value - 8.1
-        wall.wall2.obj.position.x = 0
-
-
-
-        wall.wall3.obj.position.z = lastWallPosition.value - 8
-        wall.wall3.obj.position.x = 0.7
-
-
-
-
-
-        const wallGroup = {
-          wall1: {
-            obj: wall.wall1.obj,
-            open: false,
-            opened: false
-          },
-          wall2: {
-            obj: wall.wall2.obj,
-            open: false,
-            opened: false
-          },
-          wall3: {
-            obj: wall.wall3.obj,
-            open: false,
-            opened: false
-          },
-          hide: false
+        if (box.position.z > 5) {
+          box.position.z = lastBoxPosition.value - 2.1
+          // unusedBoxes.push(box)
+          boxes.value.push(box)
+          boxes.value.shift()
         }
-        const wallsToOpen = ['wall1', 'wall2', 'wall3'] as const
-        const randomWall = wallsToOpen[Math.floor(Math.random() * 3)]
-        wallGroup[randomWall].open = true
+      })
+
+
+      walls.value.forEach((wall) => {
+        wall.wall1.obj.position.z += 0.01
+        wall.wall2.obj.position.z += 0.01
+        wall.wall3.obj.position.z += 0.01
+
+        if (Math.abs(wall.wall1.obj.position.z - mouse.position.z) < 1) {
+
+
+          // Ensure transforms are current
+          wall.wall1.obj.updateMatrixWorld()
+          wall.wall2.obj.updateMatrixWorld()
+          wall.wall3.obj.updateMatrixWorld()
+
+          // Auto-update world bounds
+          wall.wall1.boundingBox.setFromObject(wall.wall1.obj)
+          wall.wall2.boundingBox.setFromObject(wall.wall2.obj)
+          wall.wall3.boundingBox.setFromObject(wall.wall3.obj)
+
+          if (mouseBoundSphere.intersectsBox(wall.wall1.boundingBox)) {
+            // (wall.wall1.obj.material as THREE.MeshBasicMaterial).color.set(0xff0000);
+            gameOver = true
+          } else {
+            // (wall.wall1.obj.material as THREE.MeshBasicMaterial).color.set(0xffffff);
+          }
+          if (mouseBoundSphere.intersectsBox(wall.wall2.boundingBox)) {
+            (wall.wall2.obj.material as THREE.MeshBasicMaterial).color.set(0xff0000);
+            gameOver = true
+          } else {
+            (wall.wall2.obj.material as THREE.MeshBasicMaterial).color.set(0xffffff);
+          }
+          if (mouseBoundSphere.intersectsBox(wall.wall3.boundingBox)) {
+            (wall.wall3.obj.material as THREE.MeshBasicMaterial).color.set(0xff0000);
+            gameOver = true
+          } else {
+            (wall.wall2.obj.material as THREE.MeshBasicMaterial).color.set(0xffffff);
+          }
+
+        }
 
 
 
-        // unusedWalls.push(wall)
-        walls.value.push(wallGroup)
-        walls.value.shift()
-      }
+        if (wall.wall1.obj.position.z > -1 && wall.wall1.open && !wall.wall1.opened) {
+          wall.wall1.opened = true
+          gsap.to(wall.wall1.obj.position, {
+            x: '+=0.7',
+            duration: 0.2,
+            ease: "power2.out",
+          })
+
+        }
+
+        if (wall.wall2.obj.position.z > -1 && wall.wall2.open && !wall.wall2.opened) {
+          wall.wall2.opened = true
+          gsap.to(wall.wall2.obj.position, {
+            x: '+=0.7',
+            duration: 0.2,
+            ease: "power2.out",
+          })
+
+        }
+
+        if (wall.wall3.obj.position.z > -1 && wall.wall3.open && !wall.wall3.opened) {
+          wall.wall3.opened = true
+          gsap.to(wall.wall3.obj.position, {
+            x: '-=0.7',
+            duration: 0.2,
+            ease: "power2.out",
+          })
+
+        }
 
 
-    })
-    // spawner()
-
-    // update boundbox
-    mouseBoundSphere.copy(mouse.geometry!.boundingSphere).applyMatrix4(mouse.matrixWorld)
 
 
+        if (!wall.hide && wall.wall2.obj.position.z > 2.5) {
+          wall.hide = true
+          gsap.to(wall.wall1.obj.material, {
+            opacity: '0',
+            duration: 2,
+            ease: "slow(0.9,0.4,false)",
+            yoyo: true,
 
+          })
+          gsap.set(wall.wall1.obj.material, {
+            opacity: '1',
+            delay: 2
+
+          })
+          gsap.to(wall.wall2.obj.material, {
+            opacity: '0',
+            duration: 2,
+            ease: "slow(0.9,0.4,false)",
+            yoyo: true
+          })
+
+          gsap.set(wall.wall2.obj.material, {
+            opacity: '1',
+            delay: 2
+
+          })
+
+          gsap.to(wall.wall3.obj.material, {
+            opacity: '0',
+            duration: 2,
+            ease: "slow(0.9,0.4,false)",
+            yoyo: true
+          })
+
+          gsap.set(wall.wall3.obj.material, {
+            opacity: '1',
+            delay: 2
+
+          })
+
+        }
+
+
+        if (wall.wall1.obj.position.z > 5) {
+          wall.wall1.obj.position.z = lastWallPosition.value - 8
+          wall.wall1.obj.position.x = -0.7
+
+
+          wall.wall2.obj.position.z = lastWallPosition.value - 8.1
+          wall.wall2.obj.position.x = 0
+
+
+
+          wall.wall3.obj.position.z = lastWallPosition.value - 8
+          wall.wall3.obj.position.x = 0.7
+
+
+
+
+
+          const wallGroup = {
+            wall1: {
+              obj: wall.wall1.obj,
+              open: false,
+              opened: false,
+              boundingBox: wall.wall1.boundingBox
+            },
+            wall2: {
+              obj: wall.wall2.obj,
+              open: false,
+              opened: false,
+              boundingBox: wall.wall2.boundingBox
+            },
+            wall3: {
+              obj: wall.wall3.obj,
+              open: false,
+              opened: false,
+              boundingBox: wall.wall3.boundingBox
+            },
+            hide: false
+          }
+          const wallsToOpen = ['wall1', 'wall2', 'wall3'] as const
+          const randomWall = wallsToOpen[Math.floor(Math.random() * 3)]
+          wallGroup[randomWall].open = true
+
+
+
+          // unusedWalls.push(wall)
+          walls.value.push(wallGroup)
+          walls.value.shift()
+        }
+
+
+      })
+      // spawner()
+
+      // update boundbox
+      mouseBoundSphere.copy(mouse.geometry.boundingSphere!).applyMatrix4(mouse.matrixWorld)
+      mouseBoundSphere.set
+
+    }
     // debug
     stats.update()
 
