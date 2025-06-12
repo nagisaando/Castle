@@ -276,7 +276,6 @@ onMounted(() => {
   })
 
 
-
   // keyboard event 
   const jump = ref(false)
   window.addEventListener('keydown', (e) => {
@@ -299,11 +298,18 @@ onMounted(() => {
                 ease: "power2.out",
                 x: "-0.65"
               });
-              // gsap.to(camera.position, {
-              //   duration: 0.2,
-              //   ease: "power2.out",
-              //   x: "-0.65"
-              // });
+              gsap.to(Controls.target, {
+                duration: 0.2,
+                ease: "power2.out",
+                x: "-0.65",
+                onUpdate: () => { Controls.update() }
+              });
+              gsap.to(camera.position, {
+                duration: 0.2,
+                ease: "power2.out",
+                x: "-0.65",
+                onUpdate: () => { Controls.update() }
+              });
             }
             if (mouse.position.x === 0.65) {
               gsap.to(mouse.position, {
@@ -311,11 +317,18 @@ onMounted(() => {
                 ease: "power2.out",
                 x: "0"
               });
-              // gsap.to(camera.position, {
-              //   duration: 0.2,
-              //   ease: "power2.out",
-              //   x: "0"
-              // });
+              gsap.to(Controls.target, {
+                duration: 0.2,
+                ease: "power2.out",
+                x: "0",
+                onUpdate: () => { Controls.update() }
+              });
+              gsap.to(camera.position, {
+                duration: 0.2,
+                ease: "power2.out",
+                x: "0",
+                onUpdate: () => { Controls.update() }
+              });
 
             }
 
@@ -327,11 +340,18 @@ onMounted(() => {
                 ease: "power2.out",
                 x: "0.65"
               });
-              // gsap.to(camera.position, {
-              //   duration: 0.2,
-              //   ease: "power2.out",
-              //   x: "0.65"
-              // });
+              gsap.to(Controls.target, {
+                duration: 0.2,
+                ease: "power2.out",
+                x: "0.65",
+                onUpdate: () => { Controls.update() }
+              });
+              gsap.to(camera.position, {
+                duration: 0.2,
+                ease: "power2.out",
+                x: "0.65",
+                onUpdate: () => { Controls.update() }
+              });
             }
             if (mouse.position.x === -0.65) {
               gsap.to(mouse.position, {
@@ -339,11 +359,18 @@ onMounted(() => {
                 ease: "power2.out",
                 x: "0"
               });
-              // gsap.to(camera.position, {
-              //   duration: 0.2,
-              //   ease: "power2.out",
-              //   x: "0"
-              // })
+              gsap.to(Controls.target, {
+                duration: 0.2,
+                ease: "power2.out",
+                x: "0",
+                onUpdate: () => { Controls.update() }
+              });
+              gsap.to(camera.position, {
+                duration: 0.2,
+                ease: "power2.out",
+                x: "0",
+                onUpdate: () => { Controls.update() }
+              })
             }
             break;
           case arrowUp:
@@ -385,6 +412,7 @@ onMounted(() => {
 
     // Update controls
     Controls.update()
+    Controls.autoRotate = false
 
     // Renderer
     renderer.render(scene, camera)
