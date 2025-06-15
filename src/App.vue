@@ -5,16 +5,68 @@ import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import gsap from "gsap";
+
+
+// TODO
+// 1. Clean up
+// 2. Restart game
+// 3. count door
+const COLORS = {
+  BOX: ['#5d2e8c', '#ccff66', '#2EC4B6'],
+  WALLS: ['#CF5C36', '#EEE5E9', '#EFC88B']
+}
+
+const SIZES = {
+  BOX: { width: 2.1, height: 0.1, depth: 2.1 },
+  WALL: {
+    width: 0.7, height: 1.5, depth: 0.1
+  },
+  MOUSE: 0.2
+}
+
+
+const POSITIONS = {
+  WALL_X_OFFSET: 0.7,
+  WALL_Y: 0.75,
+  MOUSE_Y: 0.3,
+  MOUSE_START_Z: 3,
+  CAMERA: { z: 7, Y: 1 }
+}
+
+
 /**
- * Base
+ * Types
  */
-// Debug
-const gui = new GUI();
-const stats = new Stats()
-document.body.appendChild(stats.dom)
+
+type Wall = {
+  obj: THREE.Mesh,
+  open: boolean,
+  boundingBox: THREE.Box3,
+  opened: boolean,
+}
+
+type WallGroup = {
+  wall1: Wall,
+  wall2: Wall,
+  wall3: Wall,
+  hide: boolean
+}
+
 
 // Canvas
 const canvas = useTemplateRef('canvas')
+
+
+// Gameover 
+let gameOver = false
+
+
+
+
+/**
+ * Base
+ */
+
 
 // Scene
 const scene = new THREE.Scene()
@@ -22,105 +74,84 @@ const scene = new THREE.Scene()
 // Loaders
 const gltfLoader = new GLTFLoader()
 
-// const gameover = ref(false)
 
-let gameOver = false
+
 
 /**
  * Materials
  */
-const closestDistance = -50;
-const farDistance = 50
-const unusedBoxes: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>[] = []
-const color = ['#5d2e8c', '#ccff66', '#2EC4B6']
 
-const BoxGeometry = new THREE.BoxGeometry(1, 0.1, 1)
+// Mouse
+const mouse = new THREE.Mesh(
+  new THREE.SphereGeometry(SIZES.MOUSE), new THREE.MeshBasicMaterial()
+)
+mouse.position.set(0, POSITIONS.MOUSE_Y, POSITIONS.MOUSE_START_Z)
+
+const mouseBoundSphere = new THREE.Sphere(mouse.position, SIZES.MOUSE * 1.25)
+scene.add(mouse)
 
 
-const boxes = ref<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap>[]>([])
+// Boxes
+const boxes = ref<THREE.Mesh[]>(new Array(30))
+
+// Ring buffer indices for box
+const boxRecycleIndex = ref(0); // Tracks which box to replace next
+const lastBoxIndex = ref(-1)
 
 
 const lastBoxPosition = computed(() => {
-  if (boxes.value.length === 0) {
-    return 0
-  }
-  return boxes.value[boxes.value.length - 1].position.z
+  return boxes.value[lastBoxIndex.value]?.position.z ?? 0;
 })
 
+
 function createBox() {
-  const BoxGeometry = new THREE.BoxGeometry(2.1, 0.1, 2.1)
-  const BoxMaterial = new THREE.MeshBasicMaterial()
+  const BoxGeometry = new THREE.BoxGeometry(
+    SIZES.BOX.width,
+    SIZES.BOX.height,
+    SIZES.BOX.depth
+  )
+  const material = new THREE.MeshBasicMaterial()
+  const box = new THREE.Mesh(BoxGeometry, material)
 
-  let box: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial, THREE.Object3DEventMap> | undefined
-  if (unusedBoxes.length > 0) {
-    box = unusedBoxes.pop()
-  }
-  else {
-    box = new THREE.Mesh(BoxGeometry, BoxMaterial)
-    box.material.color.set(color[Math.min(Math.round(Math.random() * color.length), 2)])
-    scene.add(box)
-  }
+  // Set color based on position in sequence
+  const colorIndex = lastBoxIndex.value === -1 ? 0 : lastBoxIndex.value % COLORS.BOX.length
+  box.material.color.set(COLORS.BOX[colorIndex])
 
-  box!.position.z = lastBoxPosition.value - (boxes.value.length ? 2.1 : -3)
-  boxes.value.push(box!)
+  // Position the box
+  const spacing = lastBoxIndex.value === -1 ? -3 : 2.1
+  box!.position.z = lastBoxPosition.value - spacing
+
+  scene.add(box)
+
+  // Update ring buffer
+  boxes.value[boxRecycleIndex.value] = box
+  lastBoxIndex.value = boxRecycleIndex.value
+  boxRecycleIndex.value = (boxRecycleIndex.value + 1) % boxes.value.length;
 
 }
 
-function spawner() {
-  const closest = lastBoxPosition.value
-  if (closest > closestDistance) {
+function initBoxes() {
+  for (let i = 0; i < boxes.value.length; i++) {
     createBox()
   }
 }
 
-for (let i = 0; i < 30; i++) {
-  createBox()
-}
 
 
-// obstacles
-const walls = ref<{
-  wall1: {
-    obj: THREE.Mesh,
-    open: boolean,
-    boundingBox: THREE.Box3,
-    opened: boolean,
-  }
-  wall2: {
-    obj: THREE.Mesh,
-    open: boolean,
-    boundingBox: THREE.Box3,
-    opened: boolean
-  },
-  wall3: {
-    obj: THREE.Mesh,
-    open: boolean,
-    boundingBox: THREE.Box3,
-    opened: boolean
-  },
-  hide: boolean
-
-}[]>([])
-
-// const wallMesh = new THREE.Mesh(
-//   new THREE.BoxGeometry(0.7, 1.5, 0.1),
-//   new THREE.MeshBasicMaterial()
-// )
-// const wall1BoundBox = new THREE.Box3()
-// wall1BoundBox.setFromObject(wallMesh)
-
-// const wall2BoundBox = new THREE.Box3()
-// wall2BoundBox.setFromObject(wallMesh)
-
-// const wall3BoundBox = new THREE.Box3()
-// wall3BoundBox.setFromObject(wallMesh)
+// Walls 
+const walls = ref<WallGroup[]>(new Array(6))
 
 const lastWallPosition = computed(() => {
-  if (walls.value.length === 0) {
-    return 0
-  }
-  return walls.value[walls.value.length - 1].wall1.obj.position.z
+  return walls.value[lastWallIndex.value]?.wall1.obj.position.z ?? 0
 })
+
+// Ring buffer indices for wall
+const wallRecycleIndex = ref(0); // Tracks which wall to replace next
+const lastWallIndex = ref(-1)
+
+
+
+
 
 const wallGeometry = new THREE.BoxGeometry(0.7, 1.5, 0.1)
 
@@ -141,12 +172,9 @@ function createWall() {
   let wall1: THREE.Mesh
   let wall2: THREE.Mesh
   let wall3: THREE.Mesh
-  // if (unusedBoxes.length > 0) {
-  //   wall1 = unusedBoxes.pop()
-  //   wall2 = unusedBoxes.pop()
-  //   wall3 = unusedBoxes.pop()
-  // }
-  // else {
+
+  // Position walls
+
   wall1 = new THREE.Mesh(wallGeometry, wallMaterial1)
   wall1.position.y = 0.75
 
@@ -156,25 +184,22 @@ function createWall() {
   wall3 = new THREE.Mesh(wallGeometry, wallMaterial3)
   wall3.position.y = 0.75
 
+  const spacing = lastWallIndex.value === -1 ? 2 : 8 // lastWallIndex.value = -1 means no wall is assigned
+  const zPosition = lastWallPosition.value - spacing
 
-  wall1!.position.z = lastWallPosition.value - (walls.value.length ? 8 : 2)
+  wall1!.position.z = zPosition
   wall1!.position.x = -0.7
 
-  wall2!.position.z = lastWallPosition.value - (walls.value.length ? 8.1 : 2.1)
+  wall2!.position.z = zPosition - 0.1
 
-  wall3!.position.z = lastWallPosition.value - (walls.value.length ? 8 : 2)
+  wall3!.position.z = zPosition
   wall3!.position.x = 0.7
-
-  // we have to call this to use Local-space box
-  // wall1.geometry.computeBoundingBox();
-  // wall2.geometry.computeBoundingBox();
-  // wall3.geometry.computeBoundingBox();
 
   scene.add(wall1)
   scene.add(wall2)
   scene.add(wall3)
 
-  const wallGroup = {
+  const wallGroup: WallGroup = {
     wall1: {
       obj: wall1,
       open: false,
@@ -197,28 +222,280 @@ function createWall() {
     hide: false
   }
 
+  // Randomly open one wall
   const wallsToOpen = ['wall1', 'wall2', 'wall3'] as const
   const randomWall = wallsToOpen[Math.floor(Math.random() * 3)]
   wallGroup[randomWall].open = true
 
-  walls.value.push(wallGroup)
-
+  // Update ring buffer
+  walls.value[wallRecycleIndex.value] = wallGroup;
+  lastWallIndex.value = wallRecycleIndex.value
+  wallRecycleIndex.value = (wallRecycleIndex.value + 1) % walls.value.length;
 }
-for (let i = 0; i < 6; i++) {
-  createWall()
+
+function initWalls() {
+  for (let i = 0; i < walls.value.length; i++) {
+    createWall()
+  }
+}
+
+function setupControls(camera: THREE.PerspectiveCamera) {
+  const controls = new OrbitControls(camera, canvas.value)
+  controls.enableDamping = true
+  return controls
 }
 
 
-// mouse
+// Jump
+const jump = ref(false)
 
-const mouse = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshBasicMaterial())
-mouse.position.y = 0.3
-mouse.position.z = 3
+function setupKeyboardControls(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
+  const handleKeydown = (e: KeyboardEvent) => {
+    if (e.target !== document.body) return
+    e.preventDefault()
 
-const mouseBoundSphere = new THREE.Sphere(mouse.position, 0.25)
-console.log(mouseBoundSphere)
-scene.add(mouse)
+    const { code } = e
+
+    // Handle movement 
+    if (code === 'ArrowLeft') handleLeftMovement()
+    if (code === 'ArrowRight') handleRightMovement()
+    if (code === 'ArrowUp' && !jump.value) handleJump()
+    // if (code === 'ArrowDown') handleDown()
+  }
+
+  const handleLeftMovement = () => {
+    if (mouse.position.x === 0) mouseMove(-0.65)
+    if (mouse.position.x === 0.65) mouseMove(0)
+  }
+
+  const handleRightMovement = () => {
+    if (mouse.position.x === 0) mouseMove(0.65)
+    if (mouse.position.x === -0.65) mouseMove(0)
+  }
+
+  const handleJump = () => {
+    jump.value = true
+    gsap.to(
+      mouse.position, {
+      y: 0.6,
+      duration: 0.25,
+      ease: "power1.out",
+      onComplete: () => {
+        gsap.to(mouse.position, {
+          y: 0.4, // Return to original height
+          duration: 0.25,
+          ease: "bounce.out",
+          onComplete: () => {
+            jump.value = false
+          }
+        });
+      }
+    }
+    )
+  }
+
+  const mouseMove = (x: number) => {
+    gsap.to(mouse.position, {
+      duration: 0.2,
+      ease: "power2.out",
+      x
+    });
+    gsap.to(controls.target, {
+      duration: 0.2,
+      ease: "power2.out",
+      x,
+    });
+    gsap.to(camera.position, {
+      duration: 0.2,
+      ease: "power2.out",
+      x,
+    });
+  }
+
+  window.addEventListener('keydown', handleKeydown)
+}
+
+// Game loop
+function tick(
+  renderer: THREE.WebGLRenderer,
+  camera: THREE.PerspectiveCamera,
+  controls: OrbitControls,
+  stats: Stats
+) {
+  const clock = new THREE.Clock()
+
+  let previousTime = 0
+
+  const animate = () => {
+    const elapsedTime = clock.getElapsedTime()
+    const deltaTime = elapsedTime - previousTime
+    previousTime = elapsedTime
+
+
+    if (!gameOver) {
+      updateBoxes(deltaTime)
+      updateWalls(deltaTime)
+      updateMouseBoundSphere()
+    }
+
+    // Update controls
+    controls.update()
+    controls.autoRotate = false
+
+    // Renderer
+    renderer.render(scene, camera)
+
+    // debug
+    stats.update()
+    // Call tick again on the next frame
+    window.requestAnimationFrame(animate)
+  }
+
+  animate()
+}
+
+// we update the position with deltaTime so the device frame rate won't cause the different speed 
+
+function updateBoxes(deltaTime: number) {
+  // update materials
+  boxes.value.forEach((box) => {
+    box.position.z += 3.5 * deltaTime
+
+    if (box.position.z > 5) {
+      box.position.z = lastBoxPosition.value - 2.1
+      boxes.value[boxRecycleIndex.value] = box
+      lastBoxIndex.value = boxRecycleIndex.value
+      boxRecycleIndex.value = (boxRecycleIndex.value + 1) % boxes.value.length;
+    }
+  })
+}
+
+function updateWalls(deltaTime: number) {
+  walls.value.forEach((wall) => {
+    wall.wall1.obj.position.z += 3.5 * deltaTime
+    wall.wall2.obj.position.z += 3.5 * deltaTime
+    wall.wall3.obj.position.z += 3.5 * deltaTime
+
+    // check collisions
+    checkWallCollisions(wall)
+
+    // Handle wall opening animation
+    handleWallOpening(wall)
+
+    // Handle wall fading 
+    if (!wall.hide && wall.wall2.obj.position.z > 2.5) {
+      fadeWalls(wall)
+    }
+
+    // Recycle walls that go off screen
+    if (wall.wall1.obj.position.z > 5) {
+      recycleWall(wall)
+    }
+
+  })
+}
+
+function checkWallCollisions(wall: WallGroup) {
+  if (Math.abs(wall.wall1.obj.position.z - mouse.position.z) < 1) {
+    const wallsToCheck = [wall.wall1, wall.wall2, wall.wall3]
+    // update bounding boxes 
+    wallsToCheck.forEach(wall => wall.boundingBox.setFromObject(wall.obj))
+
+    if (wallsToCheck.some(wall => mouseBoundSphere.intersectsBox(wall.boundingBox))) {
+      gameOver = true
+    }
+  }
+}
+
+function handleWallOpening(wall: WallGroup) {
+  const openWall = (wallPart: Wall, xOffset: number) => {
+    if (!wallPart.opened && wallPart.open && wallPart.obj.position.z > -1) {
+      wallPart.opened = true
+      gsap.to(wallPart.obj.position, {
+        x: `+=${xOffset}`,
+        duration: 0.2,
+        ease: "power2.out",
+      })
+
+
+    }
+  }
+
+  openWall(wall.wall1, 0.7)
+  openWall(wall.wall2, 0.7)
+  openWall(wall.wall3, -0.7)
+}
+
+function fadeWalls(wall: WallGroup) {
+  wall.hide = true;
+  [wall.wall1, wall.wall2, wall.wall3].forEach((wall) => {
+    gsap.to(wall.obj.material, {
+      opacity: '0',
+      duration: 2,
+      ease: "slow(0.9,0.4,false)",
+    })
+    gsap.set(wall.obj.material, {
+      opacity: '1',
+      delay: 2
+
+    })
+  })
+}
+
+function recycleWall(wall: WallGroup) {
+  // Reposition walls 
+  const newZ = lastWallPosition.value - 8
+  wall.wall1.obj.position.z = newZ
+  wall.wall1.obj.position.x = -0.7
+
+  wall.wall2.obj.position.z = newZ - 0.1
+  wall.wall2.obj.position.x = 0
+
+  wall.wall3.obj.position.z = newZ
+  wall.wall3.obj.position.x = 0.7
+
+  // Reset wall state
+  const wallGroup: WallGroup = {
+    wall1: {
+      ...wall.wall1,
+      open: false,
+      opened: false,
+    },
+    wall2: {
+      ...wall.wall2,
+      open: false,
+      opened: false,
+    },
+    wall3: {
+      ...wall.wall3,
+      open: false,
+      opened: false,
+    },
+    hide: false
+  }
+
+  // Randomly open one wall
+  const wallsToOpen = ['wall1', 'wall2', 'wall3'] as const
+  const randomWall = wallsToOpen[Math.floor(Math.random() * 3)]
+  wallGroup[randomWall].open = true
+
+  // Circular buffer replacement
+  walls.value[wallRecycleIndex.value] = wallGroup;
+  lastWallIndex.value = wallRecycleIndex.value
+  wallRecycleIndex.value = (wallRecycleIndex.value + 1) % walls.value.length;
+}
+
+function updateMouseBoundSphere() {
+  // mouseBoundSphere.copy(mouse.geometry.boundingSphere!).applyMatrix4(mouse.matrixWorld)
+}
 onMounted(() => {
+
+  if (!canvas.value) return
+
+  // Debug
+  const gui = new GUI();
+  const stats = new Stats()
+  document.body.appendChild(stats.dom)
 
 
   /**
@@ -234,20 +511,16 @@ onMounted(() => {
   /**
   * Camera
   */
-
-
   // Base camera
-
   const camera = new THREE.PerspectiveCamera(25, sizes.width / sizes.height, 0.1, 100)
   camera.position.z = 7
   camera.position.y = 1
   scene.add(camera)
 
   // Controls
-  const Controls = new OrbitControls(camera, canvas.value)
-  Controls.enableDamping = true
+  const controls = setupControls(camera)
 
-
+  setupKeyboardControls(controls, camera)
   /**
    * Renderer
    */
@@ -255,12 +528,11 @@ onMounted(() => {
     canvas: canvas.value as HTMLCanvasElement,
     antialias: true
   })
-
   renderer.setSize(sizes.width, sizes.height)
   renderer.setPixelRatio(sizes.pixelRatio)
 
-
-  window.addEventListener('resize', () => {
+  // Handle resize
+  const handleResize = () => {
     // Update sizes 
     sizes.width = window.innerWidth
     sizes.height = window.innerHeight
@@ -273,347 +545,16 @@ onMounted(() => {
     // Update renderer
     renderer.setSize(sizes.width, sizes.height)
     renderer.setPixelRatio(sizes.pixelRatio)
-  })
-
-
-  // keyboard event 
-  const jump = ref(false)
-  window.addEventListener('keydown', (e) => {
-    if (e.target === document.body) {
-      const code = e.code
-
-      const arrowRight = 'ArrowRight'
-      const arrowLeft = 'ArrowLeft'
-      const arrowUp = 'ArrowUp'
-      const arrowDown = 'ArrowDown'
-
-      if ([arrowRight, arrowLeft, arrowUp, arrowDown].includes(code)) {
-        e.preventDefault()
-        switch (code) {
-          case arrowLeft:
-
-            if (mouse.position.x === 0) {
-              gsap.to(mouse.position, {
-                duration: 0.2,
-                ease: "power2.out",
-                x: "-0.65"
-              });
-              gsap.to(Controls.target, {
-                duration: 0.2,
-                ease: "power2.out",
-                x: "-0.65",
-                onUpdate: () => { Controls.update() }
-              });
-              gsap.to(camera.position, {
-                duration: 0.2,
-                ease: "power2.out",
-                x: "-0.65",
-                onUpdate: () => { Controls.update() }
-              });
-            }
-            if (mouse.position.x === 0.65) {
-              gsap.to(mouse.position, {
-                duration: 0.2,
-                ease: "power2.out",
-                x: "0"
-              });
-              gsap.to(Controls.target, {
-                duration: 0.2,
-                ease: "power2.out",
-                x: "0",
-                onUpdate: () => { Controls.update() }
-              });
-              gsap.to(camera.position, {
-                duration: 0.2,
-                ease: "power2.out",
-                x: "0",
-                onUpdate: () => { Controls.update() }
-              });
-
-            }
-
-            break;
-          case arrowRight:
-            if (mouse.position.x === 0) {
-              gsap.to(mouse.position, {
-                duration: 0.2,
-                ease: "power2.out",
-                x: "0.65"
-              });
-              gsap.to(Controls.target, {
-                duration: 0.2,
-                ease: "power2.out",
-                x: "0.65",
-                onUpdate: () => { Controls.update() }
-              });
-              gsap.to(camera.position, {
-                duration: 0.2,
-                ease: "power2.out",
-                x: "0.65",
-                onUpdate: () => { Controls.update() }
-              });
-            }
-            if (mouse.position.x === -0.65) {
-              gsap.to(mouse.position, {
-                duration: 0.2,
-                ease: "power2.out",
-                x: "0"
-              });
-              gsap.to(Controls.target, {
-                duration: 0.2,
-                ease: "power2.out",
-                x: "0",
-                onUpdate: () => { Controls.update() }
-              });
-              gsap.to(camera.position, {
-                duration: 0.2,
-                ease: "power2.out",
-                x: "0",
-                onUpdate: () => { Controls.update() }
-              })
-            }
-            break;
-          case arrowUp:
-            if (!jump.value) {
-              jump.value = true
-              gsap.to(
-                mouse.position, {
-                y: 0.6,
-                duration: 0.25,
-                ease: "power1.out",
-                onComplete: () => {
-                  gsap.to(mouse.position, {
-                    y: 0.4, // Return to original height
-                    duration: 0.25,
-                    ease: "bounce.out",
-                    onComplete: () => {
-                      jump.value = false
-                    }
-                  });
-                }
-              }
-              )
-
-            }
-            console.log('up')
-            break;
-          case arrowDown:
-            console.log('down')
-            break;
-
-        }
-      }
-    }
-  })
-
-  const clock = new THREE.Clock()
-  const tick = () => {
-    const elapsedTime = clock.getElapsedTime()
-
-    // Update controls
-    Controls.update()
-    Controls.autoRotate = false
-
-    // Renderer
-    renderer.render(scene, camera)
-
-    // Call tick again on the next frame
-    window.requestAnimationFrame(tick)
-    if (!gameOver) {
-      // update materials
-      boxes.value.forEach((box) => {
-        box.position.z += 0.01
-
-        if (box.position.z > 5) {
-          box.position.z = lastBoxPosition.value - 2.1
-          // unusedBoxes.push(box)
-          boxes.value.push(box)
-          boxes.value.shift()
-        }
-      })
-
-
-      walls.value.forEach((wall) => {
-        wall.wall1.obj.position.z += 0.01
-        wall.wall2.obj.position.z += 0.01
-        wall.wall3.obj.position.z += 0.01
-
-        if (Math.abs(wall.wall1.obj.position.z - mouse.position.z) < 1) {
-
-
-          // Ensure transforms are current
-          wall.wall1.obj.updateMatrixWorld()
-          wall.wall2.obj.updateMatrixWorld()
-          wall.wall3.obj.updateMatrixWorld()
-
-          // Auto-update world bounds
-          wall.wall1.boundingBox.setFromObject(wall.wall1.obj)
-          wall.wall2.boundingBox.setFromObject(wall.wall2.obj)
-          wall.wall3.boundingBox.setFromObject(wall.wall3.obj)
-
-          if (mouseBoundSphere.intersectsBox(wall.wall1.boundingBox)) {
-            // (wall.wall1.obj.material as THREE.MeshBasicMaterial).color.set(0xff0000);
-            gameOver = true
-          } else {
-            // (wall.wall1.obj.material as THREE.MeshBasicMaterial).color.set(0xffffff);
-          }
-          if (mouseBoundSphere.intersectsBox(wall.wall2.boundingBox)) {
-            (wall.wall2.obj.material as THREE.MeshBasicMaterial).color.set(0xff0000);
-            gameOver = true
-          } else {
-            (wall.wall2.obj.material as THREE.MeshBasicMaterial).color.set(0xffffff);
-          }
-          if (mouseBoundSphere.intersectsBox(wall.wall3.boundingBox)) {
-            (wall.wall3.obj.material as THREE.MeshBasicMaterial).color.set(0xff0000);
-            gameOver = true
-          } else {
-            (wall.wall2.obj.material as THREE.MeshBasicMaterial).color.set(0xffffff);
-          }
-
-        }
-
-
-
-        if (wall.wall1.obj.position.z > -1 && wall.wall1.open && !wall.wall1.opened) {
-          wall.wall1.opened = true
-          gsap.to(wall.wall1.obj.position, {
-            x: '+=0.7',
-            duration: 0.2,
-            ease: "power2.out",
-          })
-
-        }
-
-        if (wall.wall2.obj.position.z > -1 && wall.wall2.open && !wall.wall2.opened) {
-          wall.wall2.opened = true
-          gsap.to(wall.wall2.obj.position, {
-            x: '+=0.7',
-            duration: 0.2,
-            ease: "power2.out",
-          })
-
-        }
-
-        if (wall.wall3.obj.position.z > -1 && wall.wall3.open && !wall.wall3.opened) {
-          wall.wall3.opened = true
-          gsap.to(wall.wall3.obj.position, {
-            x: '-=0.7',
-            duration: 0.2,
-            ease: "power2.out",
-          })
-
-        }
-
-
-
-
-        if (!wall.hide && wall.wall2.obj.position.z > 2.5) {
-          wall.hide = true
-          gsap.to(wall.wall1.obj.material, {
-            opacity: '0',
-            duration: 2,
-            ease: "slow(0.9,0.4,false)",
-            yoyo: true,
-
-          })
-          gsap.set(wall.wall1.obj.material, {
-            opacity: '1',
-            delay: 2
-
-          })
-          gsap.to(wall.wall2.obj.material, {
-            opacity: '0',
-            duration: 2,
-            ease: "slow(0.9,0.4,false)",
-            yoyo: true
-          })
-
-          gsap.set(wall.wall2.obj.material, {
-            opacity: '1',
-            delay: 2
-
-          })
-
-          gsap.to(wall.wall3.obj.material, {
-            opacity: '0',
-            duration: 2,
-            ease: "slow(0.9,0.4,false)",
-            yoyo: true
-          })
-
-          gsap.set(wall.wall3.obj.material, {
-            opacity: '1',
-            delay: 2
-
-          })
-
-        }
-
-
-        if (wall.wall1.obj.position.z > 5) {
-          wall.wall1.obj.position.z = lastWallPosition.value - 8
-          wall.wall1.obj.position.x = -0.7
-
-
-          wall.wall2.obj.position.z = lastWallPosition.value - 8.1
-          wall.wall2.obj.position.x = 0
-
-
-
-          wall.wall3.obj.position.z = lastWallPosition.value - 8
-          wall.wall3.obj.position.x = 0.7
-
-
-
-
-
-          const wallGroup = {
-            wall1: {
-              obj: wall.wall1.obj,
-              open: false,
-              opened: false,
-              boundingBox: wall.wall1.boundingBox
-            },
-            wall2: {
-              obj: wall.wall2.obj,
-              open: false,
-              opened: false,
-              boundingBox: wall.wall2.boundingBox
-            },
-            wall3: {
-              obj: wall.wall3.obj,
-              open: false,
-              opened: false,
-              boundingBox: wall.wall3.boundingBox
-            },
-            hide: false
-          }
-          const wallsToOpen = ['wall1', 'wall2', 'wall3'] as const
-          const randomWall = wallsToOpen[Math.floor(Math.random() * 3)]
-          wallGroup[randomWall].open = true
-
-
-
-          // unusedWalls.push(wall)
-          walls.value.push(wallGroup)
-          walls.value.shift()
-        }
-
-
-      })
-      // spawner()
-
-      // update boundbox
-      mouseBoundSphere.copy(mouse.geometry.boundingSphere!).applyMatrix4(mouse.matrixWorld)
-      mouseBoundSphere.set
-
-    }
-    // debug
-    stats.update()
-
   }
+  window.addEventListener('resize', handleResize)
 
-  tick()
+  // initialize game objects
+  initBoxes()
+  initWalls()
+
+  // Start game loop
+  tick(renderer, camera, controls, stats)
+
 })
 
 
