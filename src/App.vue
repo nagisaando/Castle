@@ -11,7 +11,7 @@ import gsap from "gsap";
 // 1. Clean up
 // 2. Restart game
 // 3. count door
-// 4. Sphere not copying in the beginning
+// 4. Sphere not copying in the beginning [DONE]
 // 5. Speed really slow
 const COLORS = {
   BOX: ['#5d2e8c', '#ccff66', '#2EC4B6'],
@@ -105,13 +105,14 @@ const lastBoxPosition = computed(() => {
   return boxes.value[lastBoxIndex.value]?.position.z ?? 0;
 })
 
+const BoxGeometry = new THREE.BoxGeometry(
+  SIZES.BOX.width,
+  SIZES.BOX.height,
+  SIZES.BOX.depth
+)
 
 function createBox() {
-  const BoxGeometry = new THREE.BoxGeometry(
-    SIZES.BOX.width,
-    SIZES.BOX.height,
-    SIZES.BOX.depth
-  )
+
   const material = new THREE.MeshBasicMaterial()
   const box = new THREE.Mesh(BoxGeometry, material)
 
@@ -254,9 +255,25 @@ const jump = ref(false)
 function setupKeyboardControls(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
   const handleKeydown = (e: KeyboardEvent) => {
     if (e.target !== document.body) return
-    e.preventDefault()
 
     const { code } = e
+
+    // Only prevent default for keys we actually handle
+    const handledKeys = ['Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp'];
+    if (handledKeys.includes(code)) {
+      e.preventDefault();
+    }
+
+
+    // Handle game start
+    if (code === 'Space') {
+      gameStart = true
+      gameOver = false
+      return
+    }
+
+    // Only handle movement if game has started
+    if (!gameStart || gameOver) return
 
     // Handle movement 
     if (code === 'ArrowLeft') handleLeftMovement()
@@ -333,6 +350,9 @@ function tick(
     const deltaTime = elapsedTime - previousTime
     previousTime = elapsedTime
 
+    // Update controls
+    controls.update()
+    controls.autoRotate = false
 
     if (gameStart && !gameOver) {
       updateBoxes(deltaTime)
@@ -340,15 +360,12 @@ function tick(
       updateMouseBoundSphere()
     }
 
-    // Update controls
-    controls.update()
-    controls.autoRotate = false
-
     // Renderer
     renderer.render(scene, camera)
 
     // debug
     stats.update()
+
     // Call tick again on the next frame
     window.requestAnimationFrame(animate)
   }
@@ -488,11 +505,17 @@ function recycleWall(wall: WallGroup) {
 }
 
 function updateMouseBoundSphere() {
+  // Critical: Update the mouse's world matrix before collision check.
+  // Three.js doesn't automatically update world transforms until render time.
+  // Without this, collision detection would use stale position data from 
+  // the previous frame, making movement unresponsive.
+  mouse.updateMatrixWorld();
   if (mouse.geometry.boundingSphere)
     mouseBoundSphere.copy(mouse.geometry.boundingSphere).applyMatrix4(mouse.matrixWorld)
 }
-onMounted(() => {
 
+
+onMounted(() => {
   if (!canvas.value) return
 
   // Debug
@@ -524,6 +547,7 @@ onMounted(() => {
   const controls = setupControls(camera)
 
   setupKeyboardControls(controls, camera)
+
   /**
    * Renderer
    */
@@ -553,14 +577,7 @@ onMounted(() => {
 
   initBoxes()
   initWalls()
-  // initialize game objects
-  window.addEventListener('keydown', (e) => {
-    const { code } = e
-    if (code === 'Space') {
-      gameStart = true
 
-    }
-  })
 
   // Start game loop
   tick(renderer, camera, controls, stats)

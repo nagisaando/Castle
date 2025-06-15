@@ -196,7 +196,10 @@ for (let i = 0; i < 6; i++) {
 
 // mouse
 
-const mouse = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshBasicMaterial())
+const mouse = new THREE.Mesh(
+  new THREE.SphereGeometry(0.2),
+  new THREE.MeshBasicMaterial()
+)
 mouse.position.y = 0.3
 mouse.position.z = 3
 
