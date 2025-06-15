@@ -11,6 +11,8 @@ import gsap from "gsap";
 // 1. Clean up
 // 2. Restart game
 // 3. count door
+// 4. Sphere not copying in the beginning
+// 5. Speed really slow
 const COLORS = {
   BOX: ['#5d2e8c', '#ccff66', '#2EC4B6'],
   WALLS: ['#CF5C36', '#EEE5E9', '#EFC88B']
@@ -59,7 +61,7 @@ const canvas = useTemplateRef('canvas')
 
 // Gameover 
 let gameOver = false
-
+let gameStart = false
 
 
 
@@ -332,7 +334,7 @@ function tick(
     previousTime = elapsedTime
 
 
-    if (!gameOver) {
+    if (gameStart && !gameOver) {
       updateBoxes(deltaTime)
       updateWalls(deltaTime)
       updateMouseBoundSphere()
@@ -486,7 +488,8 @@ function recycleWall(wall: WallGroup) {
 }
 
 function updateMouseBoundSphere() {
-  // mouseBoundSphere.copy(mouse.geometry.boundingSphere!).applyMatrix4(mouse.matrixWorld)
+  if (mouse.geometry.boundingSphere)
+    mouseBoundSphere.copy(mouse.geometry.boundingSphere).applyMatrix4(mouse.matrixWorld)
 }
 onMounted(() => {
 
@@ -548,12 +551,21 @@ onMounted(() => {
   }
   window.addEventListener('resize', handleResize)
 
-  // initialize game objects
   initBoxes()
   initWalls()
+  // initialize game objects
+  window.addEventListener('keydown', (e) => {
+    const { code } = e
+    if (code === 'Space') {
+      gameStart = true
+
+    }
+  })
 
   // Start game loop
   tick(renderer, camera, controls, stats)
+
+
 
 })
 
