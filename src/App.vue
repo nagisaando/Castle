@@ -14,12 +14,12 @@ import gsap from "gsap";
 // 4. Sphere not copying in the beginning [DONE]
 // 5. Speed really slow
 const COLORS = {
-  BOX: ['#5d2e8c', '#ccff66', '#2EC4B6'],
+  FLOOR: ['#5d2e8c', '#ccff66', '#2EC4B6'],
   WALLS: ['#CF5C36', '#EEE5E9', '#EFC88B']
 }
 
 const SIZES = {
-  BOX: { width: 2.1, height: 0.1, depth: 2.1 },
+  FLOOR: { width: 2.1, height: 0.1, depth: 2.1 },
   WALL: {
     width: 0.7, height: 1.5, depth: 0.1
   },
@@ -76,6 +76,16 @@ const scene = new THREE.Scene()
 // Loaders
 const gltfLoader = new GLTFLoader()
 
+/**
+ * Texture
+ */
+
+const textureLoader = new THREE.TextureLoader()
+const tatamiColorTexture = textureLoader.load('/texture/tatami/Tatami_basecolor.png')
+const tatamiHeightTexture = textureLoader.load('/texture/tatami/Tatami_height.jpg')
+const tatamiNormalTexture = textureLoader.load('/texture/tatami/Tatami_normal.jpg')
+const tatamiAmbientOcclusionTexture = textureLoader.load('/texture/tatami/Tatami_ambientocclusion.jpg')
+const tatamiRoughnessTexture = textureLoader.load('/texture/tatami/Tatami_roughness.jpg')
 
 
 
@@ -93,49 +103,49 @@ const mouseBoundSphere = new THREE.Sphere(mouse.position, SIZES.MOUSE * 1.25)
 scene.add(mouse)
 
 
-// Boxes
-const boxes = ref<THREE.Mesh[]>(new Array(30))
+// Floor
+const floors = ref<THREE.Mesh[]>(new Array(30))
 
-// Ring buffer indices for box
-const boxRecycleIndex = ref(0); // Tracks which box to replace next
-const lastBoxIndex = ref(-1)
+// Ring buffer indices for floor
+const floorRecycleIndex = ref(0); // Tracks which floor to replace next
+const lastFloorIndex = ref(-1)
 
 
-const lastBoxPosition = computed(() => {
-  return boxes.value[lastBoxIndex.value]?.position.z ?? 0;
+const lastFloorPosition = computed(() => {
+  return floors.value[lastFloorIndex.value]?.position.z ?? 0;
 })
 
-const BoxGeometry = new THREE.BoxGeometry(
-  SIZES.BOX.width,
-  SIZES.BOX.height,
-  SIZES.BOX.depth
+const floorGeometry = new THREE.BoxGeometry(
+  SIZES.FLOOR.width,
+  SIZES.FLOOR.height,
+  SIZES.FLOOR.depth
 )
 
-function createBox() {
+function createFloor() {
 
   const material = new THREE.MeshBasicMaterial()
-  const box = new THREE.Mesh(BoxGeometry, material)
+  const floor = new THREE.Mesh(floorGeometry, material)
 
   // Set color based on position in sequence
-  const colorIndex = lastBoxIndex.value === -1 ? 0 : lastBoxIndex.value % COLORS.BOX.length
-  box.material.color.set(COLORS.BOX[colorIndex])
+  const colorIndex = lastFloorIndex.value === -1 ? 0 : lastFloorIndex.value % COLORS.FLOOR.length
+  floor.material.color.set(COLORS.FLOOR[colorIndex])
 
-  // Position the box
-  const spacing = lastBoxIndex.value === -1 ? -3 : 2.1
-  box!.position.z = lastBoxPosition.value - spacing
+  // Position the floor
+  const spacing = lastFloorIndex.value === -1 ? -3 : 2.1
+  floor!.position.z = lastFloorPosition.value - spacing
 
-  scene.add(box)
+  scene.add(floor)
 
   // Update ring buffer
-  boxes.value[boxRecycleIndex.value] = box
-  lastBoxIndex.value = boxRecycleIndex.value
-  boxRecycleIndex.value = (boxRecycleIndex.value + 1) % boxes.value.length;
+  floors.value[floorRecycleIndex.value] = floor
+  lastFloorIndex.value = floorRecycleIndex.value
+  floorRecycleIndex.value = (floorRecycleIndex.value + 1) % floors.value.length;
 
 }
 
-function initBoxes() {
-  for (let i = 0; i < boxes.value.length; i++) {
-    createBox()
+function initFloors() {
+  for (let i = 0; i < floors.value.length; i++) {
+    createFloor()
   }
 }
 
@@ -355,7 +365,7 @@ function tick(
     controls.autoRotate = false
 
     if (gameStart && !gameOver) {
-      updateBoxes(deltaTime)
+      updateFloors(deltaTime)
       updateWalls(deltaTime)
       updateMouseBoundSphere()
     }
@@ -375,16 +385,16 @@ function tick(
 
 // we update the position with deltaTime so the device frame rate won't cause the different speed 
 
-function updateBoxes(deltaTime: number) {
+function updateFloors(deltaTime: number) {
   // update materials
-  boxes.value.forEach((box) => {
-    box.position.z += 3.5 * deltaTime
+  floors.value.forEach((floor) => {
+    floor.position.z += 3.5 * deltaTime
 
-    if (box.position.z > 5) {
-      box.position.z = lastBoxPosition.value - 2.1
-      boxes.value[boxRecycleIndex.value] = box
-      lastBoxIndex.value = boxRecycleIndex.value
-      boxRecycleIndex.value = (boxRecycleIndex.value + 1) % boxes.value.length;
+    if (floor.position.z > 5) {
+      floor.position.z = lastFloorPosition.value - 2.1
+      floors.value[floorRecycleIndex.value] = floor
+      lastFloorIndex.value = floorRecycleIndex.value
+      floorRecycleIndex.value = (floorRecycleIndex.value + 1) % floors.value.length;
     }
   })
 }
@@ -417,7 +427,7 @@ function updateWalls(deltaTime: number) {
 function checkWallCollisions(wall: WallGroup) {
   if (Math.abs(wall.wall1.obj.position.z - mouse.position.z) < 1) {
     const wallsToCheck = [wall.wall1, wall.wall2, wall.wall3]
-    // update bounding boxes 
+    // update bounding floors 
     wallsToCheck.forEach(wall => wall.boundingBox.setFromObject(wall.obj))
 
     if (wallsToCheck.some(wall => mouseBoundSphere.intersectsBox(wall.boundingBox))) {
@@ -575,7 +585,7 @@ onMounted(() => {
   }
   window.addEventListener('resize', handleResize)
 
-  initBoxes()
+  initFloors()
   initWalls()
 
 
