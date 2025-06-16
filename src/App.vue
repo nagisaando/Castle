@@ -19,7 +19,7 @@ const COLORS = {
 }
 
 const SIZES = {
-  FLOOR: { width: 2.1, height: 0.1, depth: 2.1 },
+  FLOOR: { width: 2.1, height: 2.1 }, // change to 3.1
   WALL: {
     width: 0.7, height: 1.5, depth: 0.1
   },
@@ -35,6 +35,9 @@ const POSITIONS = {
   CAMERA: { z: 7, Y: 1 }
 }
 
+// debug
+const gui = new GUI();
+const stats = new Stats()
 
 /**
  * Types
@@ -88,6 +91,11 @@ const tatamiAmbientOcclusionTexture = textureLoader.load('/texture/tatami/Tatami
 const tatamiRoughnessTexture = textureLoader.load('/texture/tatami/Tatami_roughness.jpg')
 
 
+/**
+ * Lights
+ */
+const ambientLight = new THREE.AmbientLight(0xffffff, 1)
+scene.add(ambientLight)
 
 /**
  * Materials
@@ -115,25 +123,54 @@ const lastFloorPosition = computed(() => {
   return floors.value[lastFloorIndex.value]?.position.z ?? 0;
 })
 
-const floorGeometry = new THREE.BoxGeometry(
+const floorGeometry = new THREE.PlaneGeometry(
   SIZES.FLOOR.width,
   SIZES.FLOOR.height,
-  SIZES.FLOOR.depth
+  200,
+  200
 )
+
+const material = new THREE.MeshStandardMaterial({
+  map: tatamiColorTexture,
+  aoMap: tatamiAmbientOcclusionTexture,
+  normalMap: tatamiNormalTexture,
+  roughnessMap: tatamiRoughnessTexture,
+  // displacementMap: tatamiHeightTexture,
+  // displacementScale: 0.1,
+  // displacementBias: -0.03
+})
+
+gui.add(material, 'displacementScale')
+  .min(0)
+  .max(3)
+  .step(0.001)
+
+
+gui.add(material, 'displacementScale')
+  .min(-1)
+  .max(3)
+  .step(0.001)
 
 function createFloor() {
 
-  const material = new THREE.MeshBasicMaterial()
+  // const material = new THREE.MeshStandardMaterial({
+  //   map: tatamiColorTexture,
+  //   aoMap: tatamiAmbientOcclusionTexture,
+  //   normalMap: tatamiNormalTexture,
+  //   roughnessMap: tatamiRoughnessTexture,
+  //   displacementMap: tatamiHeightTexture
+
+  // })
   const floor = new THREE.Mesh(floorGeometry, material)
 
   // Set color based on position in sequence
-  const colorIndex = lastFloorIndex.value === -1 ? 0 : lastFloorIndex.value % COLORS.FLOOR.length
-  floor.material.color.set(COLORS.FLOOR[colorIndex])
+  // const colorIndex = lastFloorIndex.value === -1 ? 0 : lastFloorIndex.value % COLORS.FLOOR.length
+  // floor.material.color.set(COLORS.FLOOR[colorIndex])
 
   // Position the floor
   const spacing = lastFloorIndex.value === -1 ? -3 : 2.1
   floor!.position.z = lastFloorPosition.value - spacing
-
+  floor.rotation.x = -Math.PI / 2
   scene.add(floor)
 
   // Update ring buffer
@@ -529,8 +566,6 @@ onMounted(() => {
   if (!canvas.value) return
 
   // Debug
-  const gui = new GUI();
-  const stats = new Stats()
   document.body.appendChild(stats.dom)
 
 
