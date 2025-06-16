@@ -19,7 +19,7 @@ const COLORS = {
 }
 
 const SIZES = {
-  FLOOR: { width: 2.1, height: 2.1 }, // change to 3.1
+  FLOOR: { width: 3.5, height: 8 },
   WALL: {
     width: 0.7, height: 1.5, depth: 0.1
   },
@@ -85,10 +85,13 @@ const gltfLoader = new GLTFLoader()
 
 const textureLoader = new THREE.TextureLoader()
 const tatamiColorTexture = textureLoader.load('/texture/tatami/Tatami_basecolor.png')
+tatamiColorTexture.colorSpace = THREE.SRGBColorSpace
+
 const tatamiHeightTexture = textureLoader.load('/texture/tatami/Tatami_height.jpg')
 const tatamiNormalTexture = textureLoader.load('/texture/tatami/Tatami_normal.jpg')
 const tatamiAmbientOcclusionTexture = textureLoader.load('/texture/tatami/Tatami_ambientocclusion.jpg')
 const tatamiRoughnessTexture = textureLoader.load('/texture/tatami/Tatami_roughness.jpg')
+
 
 
 /**
@@ -97,9 +100,10 @@ const tatamiRoughnessTexture = textureLoader.load('/texture/tatami/Tatami_roughn
 const ambientLight = new THREE.AmbientLight(0xffffff, 1)
 scene.add(ambientLight)
 
-/**
- * Materials
- */
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
+directionalLight.position.set(1, 0.25, 0)
+scene.add(directionalLight)
+
 
 // Mouse
 const mouse = new THREE.Mesh(
@@ -109,6 +113,37 @@ mouse.position.set(0, POSITIONS.MOUSE_Y, POSITIONS.MOUSE_START_Z)
 
 const mouseBoundSphere = new THREE.Sphere(mouse.position, SIZES.MOUSE * 1.25)
 scene.add(mouse)
+
+
+// threshold
+let thresholdModel: THREE.Group;
+const thresholds = ref<THREE.Group[]>(new Array(30))
+gltfLoader.load('/model/threshold.glb', (gltf) => {
+  thresholdModel = gltf.scene
+  thresholdModel.scale.set(0.58, 0.5, 0.5)
+  // threshold.position.set(0, 0.01, 1.15)
+  // scene.add(threshold)
+},
+  (xhl) => {
+    console.log(`Loading: ${(xhl.loaded / xhl.total * 100).toFixed(0)}%`)
+  }
+)
+
+function loadModel(url: string): Promise<THREE.Group> {
+  return new Promise((resolve, reject) => {
+    gltfLoader.load(url, (gltf) => {
+      resolve(gltf.scene)
+    },
+      (xhl) => {
+        const percentage = (xhl.loaded / xhl.total * 100).toFixed(0)
+        console.log(`Loading: ${percentage}%`)
+      },
+      (err) => reject(err)
+    )
+  })
+}
+
+
 
 
 // Floor
@@ -126,18 +161,18 @@ const lastFloorPosition = computed(() => {
 const floorGeometry = new THREE.PlaneGeometry(
   SIZES.FLOOR.width,
   SIZES.FLOOR.height,
-  200,
-  200
+  // 200,
+  // 200,
 )
 
-const material = new THREE.MeshStandardMaterial({
+let material = new THREE.MeshStandardMaterial({
   map: tatamiColorTexture,
   aoMap: tatamiAmbientOcclusionTexture,
   normalMap: tatamiNormalTexture,
   roughnessMap: tatamiRoughnessTexture,
   // displacementMap: tatamiHeightTexture,
   // displacementScale: 0.1,
-  // displacementBias: -0.03
+  // displacementBias: -0.03,
 })
 
 gui.add(material, 'displacementScale')
@@ -153,14 +188,6 @@ gui.add(material, 'displacementScale')
 
 function createFloor() {
 
-  // const material = new THREE.MeshStandardMaterial({
-  //   map: tatamiColorTexture,
-  //   aoMap: tatamiAmbientOcclusionTexture,
-  //   normalMap: tatamiNormalTexture,
-  //   roughnessMap: tatamiRoughnessTexture,
-  //   displacementMap: tatamiHeightTexture
-
-  // })
   const floor = new THREE.Mesh(floorGeometry, material)
 
   // Set color based on position in sequence
@@ -168,12 +195,18 @@ function createFloor() {
   // floor.material.color.set(COLORS.FLOOR[colorIndex])
 
   // Position the floor
-  const spacing = lastFloorIndex.value === -1 ? -3 : 2.1
+  const spacing = lastFloorIndex.value === -1 ? -3 : (SIZES.FLOOR.height + 0.2)
   floor!.position.z = lastFloorPosition.value - spacing
   floor.rotation.x = -Math.PI / 2
   scene.add(floor)
 
+  // Create threshold if template is loaded (we need the waiting logic)
+  const threshold = thresholdModel.clone()
+  threshold.position.set(0, 0.01, floor.position.z - SIZES.FLOOR.height / 2 - 0.1);
+  scene.add(threshold)
+
   // Update ring buffer
+  thresholds.value[floorRecycleIndex.value] = threshold
   floors.value[floorRecycleIndex.value] = floor
   lastFloorIndex.value = floorRecycleIndex.value
   floorRecycleIndex.value = (floorRecycleIndex.value + 1) % floors.value.length;
@@ -424,11 +457,15 @@ function tick(
 
 function updateFloors(deltaTime: number) {
   // update materials
-  floors.value.forEach((floor) => {
+  floors.value.forEach((floor, i) => {
     floor.position.z += 3.5 * deltaTime
+    thresholds.value[i].position.z += 3.5 * deltaTime
 
     if (floor.position.z > 5) {
-      floor.position.z = lastFloorPosition.value - 2.1
+      floor.position.z = lastFloorPosition.value - (SIZES.FLOOR.height + 0.2)
+      thresholds.value[i].position.z = floor.position.z - SIZES.FLOOR.height / 2 - 0.1
+
+      // check if the ring buffer doing something?
       floors.value[floorRecycleIndex.value] = floor
       lastFloorIndex.value = floorRecycleIndex.value
       floorRecycleIndex.value = (floorRecycleIndex.value + 1) % floors.value.length;
@@ -562,7 +599,7 @@ function updateMouseBoundSphere() {
 }
 
 
-onMounted(() => {
+onMounted(async () => {
   if (!canvas.value) return
 
   // Debug
@@ -619,6 +656,11 @@ onMounted(() => {
     renderer.setPixelRatio(sizes.pixelRatio)
   }
   window.addEventListener('resize', handleResize)
+
+
+  thresholdModel = await loadModel('/model/threshold.glb')
+  thresholdModel.scale.set(0.58, 0.5, 0.5)
+
 
   initFloors()
   initWalls()
