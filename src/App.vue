@@ -5,6 +5,7 @@ import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import gsap from "gsap";
+import { floor } from "three/tsl";
 
 
 // TODO
@@ -19,20 +20,23 @@ const COLORS = {
 }
 
 const SIZES = {
-  FLOOR: { width: 3.5, height: 8 },
+  FLOOR: { width: 2.5, height: 6 },
   WALL: {
-    width: 0.7, height: 1.5, depth: 0.1
+    width: 2.5 / 3, height: 1.4, depth: 0.04
   },
   MOUSE: 0.2
 }
 
+const SPEED = 3.5
+
 
 const POSITIONS = {
-  WALL_X_OFFSET: 0.7,
-  WALL_Y: 0.75,
+  WALL_X_OFFSET: SIZES.FLOOR.width / 3,
+  WALL_Y: SIZES.WALL.height / 2 + 0.016,
   MOUSE_Y: 0.3,
   MOUSE_START_Z: 3,
-  CAMERA: { z: 7, Y: 1 }
+  MOUSE_X: 0.8,
+  CAMERA: { z: 8, y: 1 }
 }
 
 // debug
@@ -118,16 +122,6 @@ scene.add(mouse)
 // threshold
 let thresholdModel: THREE.Group;
 const thresholds = ref<THREE.Group[]>(new Array(30))
-gltfLoader.load('/model/threshold.glb', (gltf) => {
-  thresholdModel = gltf.scene
-  thresholdModel.scale.set(0.58, 0.5, 0.5)
-  // threshold.position.set(0, 0.01, 1.15)
-  // scene.add(threshold)
-},
-  (xhl) => {
-    console.log(`Loading: ${(xhl.loaded / xhl.total * 100).toFixed(0)}%`)
-  }
-)
 
 function loadModel(url: string): Promise<THREE.Group> {
   return new Promise((resolve, reject) => {
@@ -197,6 +191,10 @@ function createFloor() {
   // Position the floor
   const spacing = lastFloorIndex.value === -1 ? -3 : (SIZES.FLOOR.height + 0.2)
   floor!.position.z = lastFloorPosition.value - spacing
+  // console.log('????')
+  // console.log(floor!.position.z)
+  // console.log('????')
+
   floor.rotation.x = -Math.PI / 2
   scene.add(floor)
 
@@ -236,8 +234,9 @@ const lastWallIndex = ref(-1)
 
 
 
-const wallGeometry = new THREE.BoxGeometry(0.7, 1.5, 0.1)
+const wallGeometry = new THREE.BoxGeometry(SIZES.WALL.width, SIZES.WALL.height, SIZES.WALL.depth)
 
+// I have to modify the position of wall
 function createWall() {
   const wallMaterial1 = new THREE.MeshBasicMaterial({
     color: '#CF5C36',
@@ -259,24 +258,27 @@ function createWall() {
   // Position walls
 
   wall1 = new THREE.Mesh(wallGeometry, wallMaterial1)
-  wall1.position.y = 0.75
+  wall1.position.y = POSITIONS.WALL_Y
 
   wall2 = new THREE.Mesh(wallGeometry, wallMaterial2)
-  wall2.position.y = 0.75
+  wall2.position.y = POSITIONS.WALL_Y
 
   wall3 = new THREE.Mesh(wallGeometry, wallMaterial3)
-  wall3.position.y = 0.75
+  wall3.position.y = POSITIONS.WALL_Y
 
-  const spacing = lastWallIndex.value === -1 ? 2 : 8 // lastWallIndex.value = -1 means no wall is assigned
+  console.log(floors.value[0].position.z)
+  const spacing = lastWallIndex.value === -1 ? -(floors.value[0].position.z - SIZES.FLOOR.height / 2) : SIZES.FLOOR.height // lastWallIndex.value = -1 means no wall is assigned
   const zPosition = lastWallPosition.value - spacing
 
-  wall1!.position.z = zPosition
-  wall1!.position.x = -0.7
+  console.log(zPosition)
 
-  wall2!.position.z = zPosition - 0.1
+  wall1!.position.z = zPosition - 0.06
+  wall1!.position.x = -POSITIONS.WALL_X_OFFSET
 
-  wall3!.position.z = zPosition
-  wall3!.position.x = 0.7
+  wall2!.position.z = zPosition - 0.135
+
+  wall3!.position.z = zPosition - 0.06
+  wall3!.position.x = POSITIONS.WALL_X_OFFSET
 
   scene.add(wall1)
   scene.add(wall2)
@@ -363,13 +365,13 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
   }
 
   const handleLeftMovement = () => {
-    if (mouse.position.x === 0) mouseMove(-0.65)
-    if (mouse.position.x === 0.65) mouseMove(0)
+    if (mouse.position.x === 0) mouseMove(-POSITIONS.MOUSE_X)
+    if (mouse.position.x === POSITIONS.MOUSE_X) mouseMove(0)
   }
 
   const handleRightMovement = () => {
-    if (mouse.position.x === 0) mouseMove(0.65)
-    if (mouse.position.x === -0.65) mouseMove(0)
+    if (mouse.position.x === 0) mouseMove(POSITIONS.MOUSE_X)
+    if (mouse.position.x === -POSITIONS.MOUSE_X) mouseMove(0)
   }
 
   const handleJump = () => {
@@ -458,10 +460,10 @@ function tick(
 function updateFloors(deltaTime: number) {
   // update materials
   floors.value.forEach((floor, i) => {
-    floor.position.z += 3.5 * deltaTime
-    thresholds.value[i].position.z += 3.5 * deltaTime
+    floor.position.z += SPEED * deltaTime
+    thresholds.value[i].position.z += SPEED * deltaTime
 
-    if (floor.position.z > 5) {
+    if (floor.position.z > 8) {
       floor.position.z = lastFloorPosition.value - (SIZES.FLOOR.height + 0.2)
       thresholds.value[i].position.z = floor.position.z - SIZES.FLOOR.height / 2 - 0.1
 
@@ -475,9 +477,9 @@ function updateFloors(deltaTime: number) {
 
 function updateWalls(deltaTime: number) {
   walls.value.forEach((wall) => {
-    wall.wall1.obj.position.z += 3.5 * deltaTime
-    wall.wall2.obj.position.z += 3.5 * deltaTime
-    wall.wall3.obj.position.z += 3.5 * deltaTime
+    wall.wall1.obj.position.z += SPEED * deltaTime
+    wall.wall2.obj.position.z += SPEED * deltaTime
+    wall.wall3.obj.position.z += SPEED * deltaTime
 
     // check collisions
     checkWallCollisions(wall)
@@ -524,9 +526,9 @@ function handleWallOpening(wall: WallGroup) {
     }
   }
 
-  openWall(wall.wall1, 0.7)
-  openWall(wall.wall2, 0.7)
-  openWall(wall.wall3, -0.7)
+  openWall(wall.wall1, POSITIONS.WALL_X_OFFSET)
+  openWall(wall.wall2, POSITIONS.WALL_X_OFFSET)
+  openWall(wall.wall3, -POSITIONS.WALL_X_OFFSET)
 }
 
 function fadeWalls(wall: WallGroup) {
@@ -549,13 +551,13 @@ function recycleWall(wall: WallGroup) {
   // Reposition walls 
   const newZ = lastWallPosition.value - 8
   wall.wall1.obj.position.z = newZ
-  wall.wall1.obj.position.x = -0.7
+  wall.wall1.obj.position.x = -POSITIONS.WALL_X_OFFSET
 
-  wall.wall2.obj.position.z = newZ - 0.1
+  wall.wall2.obj.position.z = newZ - SIZES.WALL.depth
   wall.wall2.obj.position.x = 0
 
   wall.wall3.obj.position.z = newZ
-  wall.wall3.obj.position.x = 0.7
+  wall.wall3.obj.position.x = POSITIONS.WALL_X_OFFSET
 
   // Reset wall state
   const wallGroup: WallGroup = {
@@ -621,8 +623,8 @@ onMounted(async () => {
   */
   // Base camera
   const camera = new THREE.PerspectiveCamera(25, sizes.width / sizes.height, 0.1, 100)
-  camera.position.z = 7
-  camera.position.y = 1
+  camera.position.z = POSITIONS.CAMERA.z
+  camera.position.y = POSITIONS.CAMERA.y
   scene.add(camera)
 
   // Controls
@@ -659,7 +661,7 @@ onMounted(async () => {
 
 
   thresholdModel = await loadModel('/model/threshold.glb')
-  thresholdModel.scale.set(0.58, 0.5, 0.5)
+  thresholdModel.scale.set(0.41, 0.5, 0.5)
 
 
   initFloors()
