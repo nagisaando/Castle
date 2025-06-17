@@ -5,7 +5,6 @@ import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import gsap from "gsap";
-import { floor } from "three/tsl";
 
 
 // TODO
@@ -16,12 +15,12 @@ import { floor } from "three/tsl";
 // 5. Speed really slow
 const COLORS = {
   FLOOR: ['#5d2e8c', '#ccff66', '#2EC4B6'],
-  WALLS: ['#CF5C36', '#EEE5E9', '#EFC88B']
+  DOORS: ['#CF5C36', '#EEE5E9', '#EFC88B']
 }
 
 const SIZES = {
   FLOOR: { width: 2.5, height: 6 },
-  WALL: {
+  DOOR: {
     width: 2.5 / 3, height: 1.4, depth: 0.04
   },
   MOUSE: 0.2
@@ -31,8 +30,8 @@ const SPEED = 3.5
 
 
 const POSITIONS = {
-  WALL_X_OFFSET: SIZES.FLOOR.width / 3,
-  WALL_Y: SIZES.WALL.height / 2 + 0.016,
+  DOOR_X_OFFSET: SIZES.FLOOR.width / 3,
+  DOOR_Y: SIZES.DOOR.height / 2 + 0.016,
   MOUSE_Y: 0.3,
   MOUSE_START_Z: 3,
   MOUSE_X: 0.8,
@@ -47,17 +46,17 @@ const stats = new Stats()
  * Types
  */
 
-type Wall = {
+type Door = {
   obj: THREE.Mesh,
   open: boolean,
   boundingBox: THREE.Box3,
   opened: boolean,
 }
 
-type WallGroup = {
-  wall1: Wall,
-  wall2: Wall,
-  wall3: Wall,
+type DoorGroup = {
+  door1: Door,
+  door2: Door,
+  door3: Door,
   hide: boolean
 }
 
@@ -104,8 +103,8 @@ const tatamiRoughnessTexture = textureLoader.load('/texture/tatami/Tatami_roughn
 const ambientLight = new THREE.AmbientLight(0xffffff, 1)
 scene.add(ambientLight)
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
-directionalLight.position.set(1, 0.25, 0)
+const directionalLight = new THREE.DirectionalLight(0xffffff, 3)
+directionalLight.position.set(1, 4, 1)
 scene.add(directionalLight)
 
 
@@ -219,87 +218,91 @@ function initFloors() {
 
 
 
-// Walls 
-const walls = ref<WallGroup[]>(new Array(6))
+let doorLeftNobModel: THREE.Group;
+let doorRightNobModel: THREE.Group;
+// const doors = ref<THREE.Group[]>(new Array(6))
+const doors = ref<DoorGroup[]>(new Array(6))
 
-const lastWallPosition = computed(() => {
-  return walls.value[lastWallIndex.value]?.wall1.obj.position.z ?? 0
+// Doors 
+
+const lastDoorPosition = computed(() => {
+  return doors.value[lastDoorIndex.value]?.door1.obj.position.z ?? 0
 })
 
-// Ring buffer indices for wall
-const wallRecycleIndex = ref(0); // Tracks which wall to replace next
-const lastWallIndex = ref(-1)
+// Ring buffer indices for door
+const doorRecycleIndex = ref(0); // Tracks which door to replace next
+const lastDoorIndex = ref(-1)
 
 
 
 
 
-const wallGeometry = new THREE.BoxGeometry(SIZES.WALL.width, SIZES.WALL.height, SIZES.WALL.depth)
+const doorGeometry = new THREE.BoxGeometry(SIZES.DOOR.width, SIZES.DOOR.height, SIZES.DOOR.depth)
 
-// I have to modify the position of wall
-function createWall() {
-  const wallMaterial1 = new THREE.MeshBasicMaterial({
+// I have to modify the position of door
+function createDoor() {
+  const doorMaterial1 = new THREE.MeshBasicMaterial({
     color: '#CF5C36',
     transparent: true
   })
-  const wallMaterial2 = new THREE.MeshBasicMaterial({
+  const doorMaterial2 = new THREE.MeshBasicMaterial({
     color: '#EEE5E9',
     transparent: true
   })
-  const wallMaterial3 = new THREE.MeshBasicMaterial({
+  const doorMaterial3 = new THREE.MeshBasicMaterial({
     color: '#EFC88B',
     transparent: true
   })
 
-  let wall1: THREE.Mesh
-  let wall2: THREE.Mesh
-  let wall3: THREE.Mesh
+  let door1: THREE.Mesh
+  let door2: THREE.Mesh
+  let door3: THREE.Mesh
 
-  // Position walls
+  // Position doors
 
-  wall1 = new THREE.Mesh(wallGeometry, wallMaterial1)
-  wall1.position.y = POSITIONS.WALL_Y
+  door1 = new THREE.Mesh(doorGeometry, doorMaterial1)
+  door1.position.y = POSITIONS.DOOR_Y
 
-  wall2 = new THREE.Mesh(wallGeometry, wallMaterial2)
-  wall2.position.y = POSITIONS.WALL_Y
+  door2 = new THREE.Mesh(doorGeometry, doorMaterial2)
+  door2.position.y = POSITIONS.DOOR_Y
 
-  wall3 = new THREE.Mesh(wallGeometry, wallMaterial3)
-  wall3.position.y = POSITIONS.WALL_Y
+  door3 = new THREE.Mesh(doorGeometry, doorMaterial3)
+  door3.position.y = POSITIONS.DOOR_Y
 
   console.log(floors.value[0].position.z)
-  const spacing = lastWallIndex.value === -1 ? -(floors.value[0].position.z - SIZES.FLOOR.height / 2) : SIZES.FLOOR.height // lastWallIndex.value = -1 means no wall is assigned
-  const zPosition = lastWallPosition.value - spacing
+  const spacing = lastDoorIndex.value === -1 ? -(floors.value[0].position.z - SIZES.FLOOR.height / 2) : SIZES.FLOOR.height // lastDoorIndex.value = -1 means no door is assigned
+  const zPosition = lastDoorPosition.value - spacing
 
   console.log(zPosition)
 
-  wall1!.position.z = zPosition - 0.06
-  wall1!.position.x = -POSITIONS.WALL_X_OFFSET
+  door1!.position.z = zPosition - 0.06
+  door1!.position.x = -POSITIONS.DOOR_X_OFFSET
 
-  wall2!.position.z = zPosition - 0.135
+  door2!.position.z = zPosition - 0.135
 
-  wall3!.position.z = zPosition - 0.06
-  wall3!.position.x = POSITIONS.WALL_X_OFFSET
+  door3!.position.z = zPosition - 0.06
+  door3!.position.x = POSITIONS.DOOR_X_OFFSET
 
-  scene.add(wall1)
-  scene.add(wall2)
-  scene.add(wall3)
+  scene.add(door1)
+  scene.add(door2)
+  scene.add(door3)
 
-  const wallGroup: WallGroup = {
-    wall1: {
-      obj: wall1,
+  const doorGroup: DoorGroup = {
+    door1: {
+      obj: door1,
       open: false,
       boundingBox: new THREE.Box3(),
       opened: false
 
     },
-    wall2: {
-      obj: wall2,
+    door2: {
+      obj: door2,
       open: false,
       boundingBox: new THREE.Box3(),
       opened: false
     },
-    wall3: {
-      obj: wall3,
+    door3: {
+      obj: door3,
       open: false,
       boundingBox: new THREE.Box3(),
       opened: false
@@ -307,20 +310,20 @@ function createWall() {
     hide: false
   }
 
-  // Randomly open one wall
-  const wallsToOpen = ['wall1', 'wall2', 'wall3'] as const
-  const randomWall = wallsToOpen[Math.floor(Math.random() * 3)]
-  wallGroup[randomWall].open = true
+  // Randomly open one door
+  const doorsToOpen = ['door1', 'door2', 'door3'] as const
+  const randomDoor = doorsToOpen[Math.floor(Math.random() * 3)]
+  doorGroup[randomDoor].open = true
 
   // Update ring buffer
-  walls.value[wallRecycleIndex.value] = wallGroup;
-  lastWallIndex.value = wallRecycleIndex.value
-  wallRecycleIndex.value = (wallRecycleIndex.value + 1) % walls.value.length;
+  doors.value[doorRecycleIndex.value] = doorGroup;
+  lastDoorIndex.value = doorRecycleIndex.value
+  doorRecycleIndex.value = (doorRecycleIndex.value + 1) % doors.value.length;
 }
 
-function initWalls() {
-  for (let i = 0; i < walls.value.length; i++) {
-    createWall()
+function initDoors() {
+  for (let i = 0; i < doors.value.length; i++) {
+    createDoor()
   }
 }
 
@@ -438,7 +441,7 @@ function tick(
 
     if (gameStart && !gameOver) {
       updateFloors(deltaTime)
-      updateWalls(deltaTime)
+      updateDoors(deltaTime)
       updateMouseBoundSphere()
     }
 
@@ -475,48 +478,48 @@ function updateFloors(deltaTime: number) {
   })
 }
 
-function updateWalls(deltaTime: number) {
-  walls.value.forEach((wall) => {
-    wall.wall1.obj.position.z += SPEED * deltaTime
-    wall.wall2.obj.position.z += SPEED * deltaTime
-    wall.wall3.obj.position.z += SPEED * deltaTime
+function updateDoors(deltaTime: number) {
+  doors.value.forEach((door) => {
+    door.door1.obj.position.z += SPEED * deltaTime
+    door.door2.obj.position.z += SPEED * deltaTime
+    door.door3.obj.position.z += SPEED * deltaTime
 
     // check collisions
-    checkWallCollisions(wall)
+    checkDoorCollisions(door)
 
-    // Handle wall opening animation
-    handleWallOpening(wall)
+    // Handle door opening animation
+    handleDoorOpening(door)
 
-    // Handle wall fading 
-    if (!wall.hide && wall.wall2.obj.position.z > 2.5) {
-      fadeWalls(wall)
+    // Handle door fading 
+    if (!door.hide && door.door2.obj.position.z > 2.5) {
+      fadeDoors(door)
     }
 
-    // Recycle walls that go off screen
-    if (wall.wall1.obj.position.z > 5) {
-      recycleWall(wall)
+    // Recycle doors that go off screen
+    if (door.door1.obj.position.z > 5) {
+      recycleDoor(door)
     }
 
   })
 }
 
-function checkWallCollisions(wall: WallGroup) {
-  if (Math.abs(wall.wall1.obj.position.z - mouse.position.z) < 1) {
-    const wallsToCheck = [wall.wall1, wall.wall2, wall.wall3]
+function checkDoorCollisions(door: DoorGroup) {
+  if (Math.abs(door.door1.obj.position.z - mouse.position.z) < 1) {
+    const doorsToCheck = [door.door1, door.door2, door.door3]
     // update bounding floors 
-    wallsToCheck.forEach(wall => wall.boundingBox.setFromObject(wall.obj))
+    doorsToCheck.forEach(door => door.boundingBox.setFromObject(door.obj))
 
-    if (wallsToCheck.some(wall => mouseBoundSphere.intersectsBox(wall.boundingBox))) {
+    if (doorsToCheck.some(door => mouseBoundSphere.intersectsBox(door.boundingBox))) {
       gameOver = true
     }
   }
 }
 
-function handleWallOpening(wall: WallGroup) {
-  const openWall = (wallPart: Wall, xOffset: number) => {
-    if (!wallPart.opened && wallPart.open && wallPart.obj.position.z > -1) {
-      wallPart.opened = true
-      gsap.to(wallPart.obj.position, {
+function handleDoorOpening(door: DoorGroup) {
+  const openDoor = (doorPart: Door, xOffset: number) => {
+    if (!doorPart.opened && doorPart.open && doorPart.obj.position.z > -1) {
+      doorPart.opened = true
+      gsap.to(doorPart.obj.position, {
         x: `+=${xOffset}`,
         duration: 0.2,
         ease: "power2.out",
@@ -526,20 +529,20 @@ function handleWallOpening(wall: WallGroup) {
     }
   }
 
-  openWall(wall.wall1, POSITIONS.WALL_X_OFFSET)
-  openWall(wall.wall2, POSITIONS.WALL_X_OFFSET)
-  openWall(wall.wall3, -POSITIONS.WALL_X_OFFSET)
+  openDoor(door.door1, POSITIONS.DOOR_X_OFFSET)
+  openDoor(door.door2, POSITIONS.DOOR_X_OFFSET)
+  openDoor(door.door3, -POSITIONS.DOOR_X_OFFSET)
 }
 
-function fadeWalls(wall: WallGroup) {
-  wall.hide = true;
-  [wall.wall1, wall.wall2, wall.wall3].forEach((wall) => {
-    gsap.to(wall.obj.material, {
+function fadeDoors(door: DoorGroup) {
+  door.hide = true;
+  [door.door1, door.door2, door.door3].forEach((door) => {
+    gsap.to(door.obj.material, {
       opacity: '0',
       duration: 2,
       ease: "slow(0.9,0.4,false)",
     })
-    gsap.set(wall.obj.material, {
+    gsap.set(door.obj.material, {
       opacity: '1',
       delay: 2
 
@@ -547,47 +550,47 @@ function fadeWalls(wall: WallGroup) {
   })
 }
 
-function recycleWall(wall: WallGroup) {
-  // Reposition walls 
-  const newZ = lastWallPosition.value - 8
-  wall.wall1.obj.position.z = newZ
-  wall.wall1.obj.position.x = -POSITIONS.WALL_X_OFFSET
+function recycleDoor(door: DoorGroup) {
+  // Reposition doors 
+  const newZ = lastDoorPosition.value - 8
+  door.door1.obj.position.z = newZ
+  door.door1.obj.position.x = -POSITIONS.DOOR_X_OFFSET
 
-  wall.wall2.obj.position.z = newZ - SIZES.WALL.depth
-  wall.wall2.obj.position.x = 0
+  door.door2.obj.position.z = newZ - SIZES.DOOR.depth
+  door.door2.obj.position.x = 0
 
-  wall.wall3.obj.position.z = newZ
-  wall.wall3.obj.position.x = POSITIONS.WALL_X_OFFSET
+  door.door3.obj.position.z = newZ
+  door.door3.obj.position.x = POSITIONS.DOOR_X_OFFSET
 
-  // Reset wall state
-  const wallGroup: WallGroup = {
-    wall1: {
-      ...wall.wall1,
+  // Reset door state
+  const doorGroup: DoorGroup = {
+    door1: {
+      ...door.door1,
       open: false,
       opened: false,
     },
-    wall2: {
-      ...wall.wall2,
+    door2: {
+      ...door.door2,
       open: false,
       opened: false,
     },
-    wall3: {
-      ...wall.wall3,
+    door3: {
+      ...door.door3,
       open: false,
       opened: false,
     },
     hide: false
   }
 
-  // Randomly open one wall
-  const wallsToOpen = ['wall1', 'wall2', 'wall3'] as const
-  const randomWall = wallsToOpen[Math.floor(Math.random() * 3)]
-  wallGroup[randomWall].open = true
+  // Randomly open one door
+  const doorsToOpen = ['door1', 'door2', 'door3'] as const
+  const randomDoor = doorsToOpen[Math.floor(Math.random() * 3)]
+  doorGroup[randomDoor].open = true
 
   // Circular buffer replacement
-  walls.value[wallRecycleIndex.value] = wallGroup;
-  lastWallIndex.value = wallRecycleIndex.value
-  wallRecycleIndex.value = (wallRecycleIndex.value + 1) % walls.value.length;
+  doors.value[doorRecycleIndex.value] = doorGroup;
+  lastDoorIndex.value = doorRecycleIndex.value
+  doorRecycleIndex.value = (doorRecycleIndex.value + 1) % doors.value.length;
 }
 
 function updateMouseBoundSphere() {
@@ -660,12 +663,24 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
 
 
-  thresholdModel = await loadModel('/model/threshold.glb')
+  const [thresholdModelData, doorLeftNobModelData, doorRightModelData] = await Promise.all([
+    loadModel('/model/threshold.glb'),
+    loadModel('/model/door-left-nob.glb'),
+    loadModel('/model/door-right-nob.glb')
+  ])
+  thresholdModel = thresholdModelData
   thresholdModel.scale.set(0.41, 0.5, 0.5)
 
+  doorLeftNobModel = doorLeftNobModelData
+
+  scene.add(doorLeftNobModel)
+
+  doorRightNobModel = doorRightModelData
+  doorRightModelData.position.set(0.8, 0, 0)
+  scene.add(doorRightModelData)
 
   initFloors()
-  initWalls()
+  initDoors()
 
 
   // Start game loop
