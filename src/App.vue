@@ -2,7 +2,7 @@
 import * as THREE from "three"
 import GUI from 'lil-gui';
 import { computed, onMounted, ref, useTemplateRef } from 'vue'
-import { GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
+import { DRACOLoader, GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import gsap from "gsap";
 
@@ -21,7 +21,7 @@ const COLORS = {
 const SIZES = {
   FLOOR: { width: 2.5, height: 6 },
   DOOR: {
-    width: 2.5 / 3, height: 1.4, depth: 0.04
+    width: 2.5 / 3, height: 1.4, depth: 0.02
   },
   MOUSE: 0.2
 }
@@ -31,7 +31,7 @@ const SPEED = 3.5
 
 const POSITIONS = {
   DOOR_X_OFFSET: SIZES.FLOOR.width / 3,
-  DOOR_Y: SIZES.DOOR.height / 2 + 0.016,
+  DOOR_Y: 0.016,
   MOUSE_Y: 0.3,
   MOUSE_START_Z: 3,
   MOUSE_X: 0.8,
@@ -82,6 +82,40 @@ const scene = new THREE.Scene()
 // Loaders
 const gltfLoader = new GLTFLoader()
 
+function loadModel(url: string): Promise<THREE.Group> {
+  return new Promise((resolve, reject) => {
+    gltfLoader.load(url, (gltf) => {
+      resolve(gltf.scene)
+    },
+      (xhl) => {
+        const percentage = (xhl.loaded / xhl.total * 100).toFixed(0)
+        // console.log(`Loading: ${percentage}%`)
+      },
+      (err) => reject(err)
+    )
+  })
+}
+
+const dracoLoader = new DRACOLoader()
+dracoLoader.setDecoderPath('/draco/')
+gltfLoader.setDRACOLoader(dracoLoader)
+
+
+// function loadDracoModel(url: string): Promise<THREE.Group> {
+//   return new Promise((resolve, reject) => {
+//     gltfLoader.load(url, (gltf) => {
+//       resolve(gltf.scene)
+//     },
+//       (xhl) => {
+//         const percentage = (xhl.loaded / xhl.total * 100).toFixed(0)
+//         // console.log(`Loading: ${percentage}%`)
+//       },
+//       (err) => reject(err)
+//     )
+//   })
+// }
+
+
 /**
  * Texture
  */
@@ -122,19 +156,6 @@ scene.add(mouse)
 let thresholdModel: THREE.Group;
 const thresholds = ref<THREE.Group[]>(new Array(30))
 
-function loadModel(url: string): Promise<THREE.Group> {
-  return new Promise((resolve, reject) => {
-    gltfLoader.load(url, (gltf) => {
-      resolve(gltf.scene)
-    },
-      (xhl) => {
-        const percentage = (xhl.loaded / xhl.total * 100).toFixed(0)
-        console.log(`Loading: ${percentage}%`)
-      },
-      (err) => reject(err)
-    )
-  })
-}
 
 
 
@@ -190,9 +211,7 @@ function createFloor() {
   // Position the floor
   const spacing = lastFloorIndex.value === -1 ? -3 : (SIZES.FLOOR.height + 0.2)
   floor!.position.z = lastFloorPosition.value - spacing
-  // console.log('????')
-  // console.log(floor!.position.z)
-  // console.log('????')
+
 
   floor.rotation.x = -Math.PI / 2
   scene.add(floor)
@@ -241,45 +260,53 @@ const doorGeometry = new THREE.BoxGeometry(SIZES.DOOR.width, SIZES.DOOR.height, 
 
 // I have to modify the position of door
 function createDoor() {
-  const doorMaterial1 = new THREE.MeshBasicMaterial({
-    color: '#CF5C36',
-    transparent: true
-  })
-  const doorMaterial2 = new THREE.MeshBasicMaterial({
-    color: '#EEE5E9',
-    transparent: true
-  })
-  const doorMaterial3 = new THREE.MeshBasicMaterial({
-    color: '#EFC88B',
-    transparent: true
-  })
+  // const doorMaterial1 = new THREE.MeshBasicMaterial({
+  //   color: '#CF5C36',
+  //   transparent: true
+  // })
+  // const doorMaterial2 = new THREE.MeshBasicMaterial({
+  //   color: '#EEE5E9',
+  //   transparent: true
+  // })
+  // const doorMaterial3 = new THREE.MeshBasicMaterial({
+  //   color: '#EFC88B',
+  //   transparent: true
+  // })
 
-  let door1: THREE.Mesh
-  let door2: THREE.Mesh
-  let door3: THREE.Mesh
+  // let door1: THREE.Mesh
+  // let door2: THREE.Mesh
+  // let door3: THREE.Mesh
+
 
   // Position doors
 
-  door1 = new THREE.Mesh(doorGeometry, doorMaterial1)
-  door1.position.y = POSITIONS.DOOR_Y
+  // door1 = new THREE.Mesh(doorGeometry, doorMaterial1)
+  // door1.position.y = POSITIONS.DOOR_Y
 
-  door2 = new THREE.Mesh(doorGeometry, doorMaterial2)
-  door2.position.y = POSITIONS.DOOR_Y
+  // door2 = new THREE.Mesh(doorGeometry, doorMaterial2)
+  // door2.position.y = POSITIONS.DOOR_Y
 
-  door3 = new THREE.Mesh(doorGeometry, doorMaterial3)
-  door3.position.y = POSITIONS.DOOR_Y
+  // door3 = new THREE.Mesh(doorGeometry, doorMaterial3)
+  // door3.position.y = POSITIONS.DOOR_Y
 
-  console.log(floors.value[0].position.z)
-  const spacing = lastDoorIndex.value === -1 ? -(floors.value[0].position.z - SIZES.FLOOR.height / 2) : SIZES.FLOOR.height // lastDoorIndex.value = -1 means no door is assigned
-  const zPosition = lastDoorPosition.value - spacing
+
+  const door1 = doorLeftNobModel.clone()
+  const door2 = doorLeftNobModel.clone()
+  const door3 = doorRightNobModel.clone()
+
+  const spacing = lastDoorIndex.value === -1 ? floors.value[0].position.z - SIZES.FLOOR.height / 2 : -SIZES.FLOOR.height - 0.15 // lastDoorIndex.value = -1 means no door is assigned
+  const zPosition = lastDoorPosition.value + spacing
 
   console.log(zPosition)
 
+  door1.position.y = POSITIONS.DOOR_Y
   door1!.position.z = zPosition - 0.06
   door1!.position.x = -POSITIONS.DOOR_X_OFFSET
 
+  door2.position.y = POSITIONS.DOOR_Y
   door2!.position.z = zPosition - 0.135
 
+  door3.position.y = POSITIONS.DOOR_Y
   door3!.position.z = zPosition - 0.06
   door3!.position.x = POSITIONS.DOOR_X_OFFSET
 
@@ -665,19 +692,17 @@ onMounted(async () => {
 
   const [thresholdModelData, doorLeftNobModelData, doorRightModelData] = await Promise.all([
     loadModel('/model/threshold.glb'),
-    loadModel('/model/door-left-nob.glb'),
-    loadModel('/model/door-right-nob.glb')
+    loadModel('/model/left-door-nob/door.gltf'),
+    loadModel('/model/right-door-nob/door.gltf')
   ])
   thresholdModel = thresholdModelData
   thresholdModel.scale.set(0.41, 0.5, 0.5)
 
   doorLeftNobModel = doorLeftNobModelData
 
-  scene.add(doorLeftNobModel)
-
   doorRightNobModel = doorRightModelData
   doorRightModelData.position.set(0.8, 0, 0)
-  scene.add(doorRightModelData)
+
 
   initFloors()
   initDoors()
