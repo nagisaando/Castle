@@ -415,7 +415,7 @@ function tick(
     controls.update()
     controls.autoRotate = false
 
-    if (gameStart) {
+    if (gameStart && !gameOver) {
       updateFloorsAndDoors(deltaTime);
       updateMouseBoundSphere()
 
