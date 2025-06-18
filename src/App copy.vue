@@ -78,7 +78,6 @@ let gameStart = false
 
 // Scene
 const scene = new THREE.Scene()
-scene.background = new THREE.Color().setHex(0x112233);
 
 // Loaders
 const gltfLoader = new GLTFLoader()
@@ -138,12 +137,16 @@ const mouseBoundSphere = new THREE.Sphere(mouse.position, SIZES.MOUSE * 1.25)
 scene.add(mouse)
 
 
+// threshold
+let thresholdModel: THREE.Group;
+const thresholds = ref<THREE.Group[]>(new Array(30))
+
 
 
 
 
 // Floor
-const floors = ref<THREE.Mesh[]>(new Array(6))
+const floors = ref<THREE.Mesh[]>(new Array(30))
 
 // Ring buffer indices for floor
 const floorRecycleIndex = ref(0); // Tracks which floor to replace next
@@ -164,13 +167,7 @@ let material = new THREE.MeshStandardMaterial({
   aoMap: tatamiAmbientOcclusionTexture,
   normalMap: tatamiNormalTexture,
   roughnessMap: tatamiRoughnessTexture,
-  side: THREE.DoubleSide
 })
-
-function getNextFloorPosition() {
-  if (lastFloorIndex.value === -1) return -3; // Initial position
-  return lastFloorPosition.value - (SIZES.FLOOR.height + thresholdModelSize.z);
-}
 
 function createFloor() {
 
@@ -181,14 +178,20 @@ function createFloor() {
   // floor.material.color.set(COLORS.FLOOR[colorIndex])
 
   // Position the floor
-  floor!.position.z = getNextFloorPosition()
+  const spacing = lastFloorIndex.value === -1 ? -3 : (SIZES.FLOOR.height + 0.2)
+  floor!.position.z = lastFloorPosition.value - spacing
+
 
   floor.rotation.x = -Math.PI / 2
   scene.add(floor)
 
+  // Create threshold if template is loaded (we need the waiting logic)
+  const threshold = thresholdModel.clone()
+  threshold.position.set(0, 0.01, floor.position.z - SIZES.FLOOR.height / 2 - 0.1);
+  scene.add(threshold)
 
   // Update ring buffer
-
+  thresholds.value[floorRecycleIndex.value] = threshold
   floors.value[floorRecycleIndex.value] = floor
   lastFloorIndex.value = floorRecycleIndex.value
   floorRecycleIndex.value = (floorRecycleIndex.value + 1) % floors.value.length;
@@ -202,61 +205,54 @@ function initFloors() {
 }
 
 
-// Doors 
 
 let doorLeftNobModel: THREE.Group;
 let doorRightNobModel: THREE.Group;
 // const doors = ref<THREE.Group[]>(new Array(6))
 const doors = ref<DoorGroup[]>(new Array(6))
 
-// threshold
-let thresholdModel: THREE.Group;
-const thresholds = ref<THREE.Group[]>(new Array(6))
-let thresholdModelSize: THREE.Vector3
+// Doors 
 
-
-const lastThresholdPosition = computed(() => {
-  return thresholds.value[lastDoorIndex.value]?.position.z ?? 0
+const lastDoorPosition = computed(() => {
+  return doors.value[lastDoorIndex.value]?.door1.obj.position.z ?? 0
 })
 
 // Ring buffer indices for door
 const doorRecycleIndex = ref(0); // Tracks which door to replace next
 const lastDoorIndex = ref(-1)
 
-
-function getNextDoorPosition() {
-  // for the first element we divide SIZES.FLOOR.height by 2 since z position of the floor starts in the middle so to place the door in the edge we have to divide
-  if (lastDoorIndex.value === -1) return floors.value[0].position.z - (SIZES.FLOOR.height / 2 + thresholdModelSize.z / 2); // Initial position
-  return lastThresholdPosition.value - (SIZES.FLOOR.height + thresholdModelSize.z)
-}
-
+// I have to modify the position of door
 function createDoor() {
+
+
   const door1 = doorLeftNobModel.clone()
   const door2 = doorLeftNobModel.clone()
   const door3 = doorRightNobModel.clone()
 
+  // for the first element we divide SIZES.FLOOR.height by 2 since z position of the floor starts in the middle so to place the door in the edge we have to divide
+  const spacing = lastDoorIndex.value === -1 ? floors.value[0].position.z - SIZES.FLOOR.height / 2 : -SIZES.FLOOR.height // lastDoorIndex.value = -1 means no door is assigned
+  const zPosition = lastDoorPosition.value + spacing
 
-  const zPosition = getNextDoorPosition()
+  console.log(zPosition)
 
-  // Create threshold if template is loaded (we need the waiting logic)
-  const threshold = thresholdModel.clone()
-  threshold.position.set(0, 0.01, zPosition);
+  // these are used to move the door to the start edge of the next door,
+  // because we are placing the door on the threshold (between the floor), we need the small adjustment for the non-first door to be placed correctly
+  const spaceToNextFloorFirSideDoor = lastDoorIndex.value === -1 ? 0 : -0.165
+  const spaceToNextFloorForCenterDoor = lastDoorIndex.value === -1 ? 0 : -0.09
 
   // since door needs to be placed on the threshold, we need to offset the door 
-  const doorOffsetZ = 0.03
-
+  const sideDoorOffsetZ = -0.06
+  const centerDoorOffsetZ = -0.135
   door1.position.y = POSITIONS.DOOR_Y
-  door1!.position.z = zPosition + doorOffsetZ
+  door1!.position.z = zPosition + sideDoorOffsetZ + spaceToNextFloorFirSideDoor
   door1!.position.x = -POSITIONS.DOOR_X_OFFSET
 
   door2.position.y = POSITIONS.DOOR_Y
-  door2!.position.z = zPosition - doorOffsetZ
+  door2!.position.z = zPosition + centerDoorOffsetZ + spaceToNextFloorForCenterDoor
 
   door3.position.y = POSITIONS.DOOR_Y
-  door3!.position.z = zPosition + doorOffsetZ
+  door3!.position.z = zPosition + sideDoorOffsetZ + spaceToNextFloorFirSideDoor
   door3!.position.x = POSITIONS.DOOR_X_OFFSET
-
-  scene.add(threshold)
 
   scene.add(door1)
   scene.add(door2)
@@ -291,7 +287,6 @@ function createDoor() {
   doorGroup[randomDoor].open = true
 
   // Update ring buffer
-  thresholds.value[doorRecycleIndex.value] = threshold
   doors.value[doorRecycleIndex.value] = doorGroup;
   lastDoorIndex.value = doorRecycleIndex.value
   doorRecycleIndex.value = (doorRecycleIndex.value + 1) % doors.value.length;
@@ -415,10 +410,10 @@ function tick(
     controls.update()
     controls.autoRotate = false
 
-    if (gameStart) {
-      updateFloorsAndDoors(deltaTime);
+    if (gameStart && !gameOver) {
+      updateFloors(deltaTime)
+      updateDoors(deltaTime)
       updateMouseBoundSphere()
-
     }
 
     // Renderer
@@ -429,24 +424,23 @@ function tick(
 
     // Call tick again on the next frame
     window.requestAnimationFrame(animate)
-
-
-
   }
 
   animate()
-
 }
 
 // we update the position with deltaTime so the device frame rate won't cause the different speed 
 
 function updateFloors(deltaTime: number) {
   // update materials
-  floors.value.forEach((floor) => {
+  floors.value.forEach((floor, i) => {
     floor.position.z += SPEED * deltaTime
+    thresholds.value[i].position.z += SPEED * deltaTime
 
     if (floor.position.z > 8) {
-      floor.position.z = getNextFloorPosition()
+      floor.position.z = lastFloorPosition.value - (SIZES.FLOOR.height + 0.2)
+      thresholds.value[i].position.z = floor.position.z - SIZES.FLOOR.height / 2 - 0.1
+
       // check if the ring buffer doing something?
       floors.value[floorRecycleIndex.value] = floor
       lastFloorIndex.value = floorRecycleIndex.value
@@ -456,11 +450,10 @@ function updateFloors(deltaTime: number) {
 }
 
 function updateDoors(deltaTime: number) {
-  doors.value.forEach((door, i) => {
+  doors.value.forEach((door) => {
     door.door1.obj.position.z += SPEED * deltaTime
     door.door2.obj.position.z += SPEED * deltaTime
     door.door3.obj.position.z += SPEED * deltaTime
-    thresholds.value[i].position.z += SPEED * deltaTime
 
     // check collisions
     checkDoorCollisions(door)
@@ -474,98 +467,11 @@ function updateDoors(deltaTime: number) {
     // }
 
     // Recycle doors that go off screen
-    if (door.door1.obj.position.z > 8) {
-      recycleDoor(door, thresholds.value[i])
+    if (door.door1.obj.position.z > 5) {
+      recycleDoor(door)
     }
 
   })
-}
-
-function updateFloorsAndDoors(deltaTime: number) {
-  floors.value.forEach((floor) => {
-    floor.position.z += SPEED * deltaTime
-  })
-
-  doors.value.forEach((door, i) => {
-    door.door1.obj.position.z += SPEED * deltaTime
-    door.door2.obj.position.z += SPEED * deltaTime
-    door.door3.obj.position.z += SPEED * deltaTime
-    thresholds.value[i].position.z += SPEED * deltaTime
-
-    // check collisions
-    checkDoorCollisions(door)
-
-    // Handle door opening animation
-    handleDoorOpening(door)
-
-    // Handle door fading 
-    // if (!door.hide && door.door2.obj.position.z > 2.5) {
-    //   fadeDoors(door)
-    // }
-
-    // Recycle doors that go off screen
-    if (door.door1.obj.position.z > 8) {
-      recycleFloorAndDoors()
-    }
-
-  })
-
-}
-
-function recycleFloorAndDoors() {
-  // Calculate the next position for the floor
-  const newFloorPosition = getNextFloorPosition();
-
-  // Recycle the oldest floor
-  const floorToRecycle = floors.value[floorRecycleIndex.value];
-  floorToRecycle.position.z = newFloorPosition;
-
-  // Recycle the corresponding door & threshold
-  const doorToRecycle = doors.value[doorRecycleIndex.value];
-  const thresholdToRecycle = thresholds.value[doorRecycleIndex.value];
-
-  // Position the threshold right after the floor
-  // we can not use getNextDoorPosition(), it miscalculates
-  // instead we have to calculate new positions using the same reference point "newFloorPosition"
-  const newDoorPos = newFloorPosition - (SIZES.FLOOR.height / 2 + thresholdModelSize.z / 2);
-  thresholdToRecycle.position.z = newDoorPos;
-
-  // Reset door positions (with small offsets
-  const doorOffsetZ = 0.03
-
-  doorToRecycle.door1.obj.position.z = newDoorPos + doorOffsetZ
-  doorToRecycle.door1.obj.position.x = -POSITIONS.DOOR_X_OFFSET
-
-  doorToRecycle.door2.obj.position.z = newDoorPos - doorOffsetZ
-  doorToRecycle.door2.obj.position.x = 0
-
-  doorToRecycle.door3.obj.position.z = newDoorPos + doorOffsetZ
-  doorToRecycle.door3.obj.position.x = POSITIONS.DOOR_X_OFFSET
-
-  resetDoorGroup(doorToRecycle)
-
-  // Update recycle indices
-  lastFloorIndex.value = floorRecycleIndex.value
-  lastDoorIndex.value = doorRecycleIndex.value
-  floorRecycleIndex.value = (floorRecycleIndex.value + 1) % floors.value.length;
-  doorRecycleIndex.value = (doorRecycleIndex.value + 1) % doors.value.length;
-}
-
-function resetDoorGroup(doorGroup: DoorGroup) {
-  // Close all doors
-  doorGroup.door1.open = false;
-  doorGroup.door1.opened = false;
-  doorGroup.door2.open = false;
-  doorGroup.door2.opened = false;
-  doorGroup.door3.open = false;
-  doorGroup.door3.opened = false;
-
-  // Randomly open one door
-  const doorsToOpen = ['door1', 'door2', 'door3'] as const
-  const randomDoor = doorsToOpen[Math.floor(Math.random() * 3)]
-  doorGroup[randomDoor].open = true
-
-  doorGroup.hide = false
 }
 
 function checkDoorCollisions(door: DoorGroup) {
@@ -615,24 +521,16 @@ function fadeDoors(door: DoorGroup) {
   })
 }
 
-function recycleDoor(door: DoorGroup, threshold: THREE.Group) {
+function recycleDoor(door: DoorGroup) {
   // Reposition doors 
-  const newZ = getNextDoorPosition()
-
-  threshold.position.z = newZ
-
-  // since door needs to be placed on the threshold, we need to offset the door 
-  const doorOffsetZ = 0.03
-
-
-
-  door.door1.obj.position.z = newZ + doorOffsetZ
+  const newZ = lastDoorPosition.value - SIZES.FLOOR.height - 0.15
+  door.door1.obj.position.z = newZ - 0.06
   door.door1.obj.position.x = -POSITIONS.DOOR_X_OFFSET
 
-  door.door2.obj.position.z = newZ - doorOffsetZ
+  door.door2.obj.position.z = newZ - 0.135
   door.door2.obj.position.x = 0
 
-  door.door3.obj.position.z = newZ + doorOffsetZ
+  door.door3.obj.position.z = newZ - 0.06
   door.door3.obj.position.x = POSITIONS.DOOR_X_OFFSET
 
   // Reset door state
@@ -662,7 +560,6 @@ function recycleDoor(door: DoorGroup, threshold: THREE.Group) {
 
   // Circular buffer replacement
   doors.value[doorRecycleIndex.value] = doorGroup;
-  thresholds.value[doorRecycleIndex.value] = threshold
   lastDoorIndex.value = doorRecycleIndex.value
   doorRecycleIndex.value = (doorRecycleIndex.value + 1) % doors.value.length;
 }
@@ -714,7 +611,7 @@ onMounted(async () => {
    */
   const renderer = new THREE.WebGLRenderer({
     canvas: canvas.value as HTMLCanvasElement,
-    antialias: true,
+    antialias: true
   })
   renderer.setSize(sizes.width, sizes.height)
   renderer.setPixelRatio(sizes.pixelRatio)
@@ -744,14 +641,6 @@ onMounted(async () => {
   ])
   thresholdModel = thresholdModelData
   thresholdModel.scale.set(0.41, 0.5, 0.5)
-
-  const thresholdBoundingBox = new THREE.Box3().setFromObject(thresholdModel);
-  const size = new THREE.Vector3();
-  thresholdModelSize = thresholdBoundingBox.getSize(size)
-
-  thresholdModelSize.z = parseFloat(thresholdModelSize.z.toFixed(3));
-
-
 
   doorLeftNobModel = doorLeftNobModelData
 
