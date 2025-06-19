@@ -120,12 +120,14 @@ const tatamiRoughnessTexture = textureLoader.load('/texture/tatami/Tatami_roughn
 /**
  * Lights
  */
-const ambientLight = new THREE.AmbientLight(0xffffff, 1)
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.2)
 scene.add(ambientLight)
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 3)
-directionalLight.position.set(1, 4, 1)
+directionalLight.position.set(1, 0, 1)
+const directonalLightHelper = new THREE.DirectionalLightHelper(directionalLight)
 scene.add(directionalLight)
+scene.add(directonalLightHelper)
 
 
 // Mouse
@@ -737,14 +739,30 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
 
 
-  const [thresholdModelData, doorLeftNobModelData, doorRightModelData] = await Promise.all([
+  const [thresholdModelData, doorLeftNobModelData, doorRightModelData, doorWall, leftSideDoor, ceiling] = await Promise.all([
     loadModel('/model/threshold.glb'),
     loadModel('/model/left-door-nob/door.gltf'),
-    loadModel('/model/right-door-nob/door.gltf')
+    loadModel('/model/right-door-nob/door.gltf'),
+    loadModel('/model/door-wall/door-wall.gltf'),
+    loadModel('/model/left-side-door/left-side-door.gltf'),
+    loadModel('/model/ceiling/ceiling.gltf')
   ])
   thresholdModel = thresholdModelData
   thresholdModel.scale.set(0.41, 0.5, 0.5)
+  doorWall.position.z = -6
 
+  scene.add(doorWall)
+
+  scene.add(leftSideDoor)
+  leftSideDoor.position.z = -5.95
+  const rightDoor = leftSideDoor.clone()
+  rightDoor.rotation.y = Math.PI
+  scene.add(rightDoor)
+  rightDoor.position.z = 0
+
+
+  ceiling.position.z = -6
+  scene.add(ceiling)
   const thresholdBoundingBox = new THREE.Box3().setFromObject(thresholdModel);
   const size = new THREE.Vector3();
   thresholdModelSize = thresholdBoundingBox.getSize(size)
