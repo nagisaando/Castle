@@ -739,13 +739,14 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
 
 
-  const [thresholdModelData, doorLeftNobModelData, doorRightModelData, doorWall, leftSideDoor, ceiling] = await Promise.all([
+  const [thresholdModelData, doorLeftNobModelData, doorRightModelData, doorWall, leftSideDoor, ceiling, castle] = await Promise.all([
     loadModel('/model/threshold.glb'),
     loadModel('/model/left-door-nob/door.gltf'),
     loadModel('/model/right-door-nob/door.gltf'),
     loadModel('/model/door-wall/door-wall.gltf'),
     loadModel('/model/left-side-door/left-side-door.gltf'),
-    loadModel('/model/ceiling/ceiling.gltf')
+    loadModel('/model/ceiling/ceiling.gltf'),
+    loadModel('/model/castle/castle.gltf')
   ])
   thresholdModel = thresholdModelData
   thresholdModel.scale.set(0.41, 0.5, 0.5)
@@ -763,6 +764,8 @@ onMounted(async () => {
 
   ceiling.position.z = -6
   scene.add(ceiling)
+
+  scene.add(castle)
   const thresholdBoundingBox = new THREE.Box3().setFromObject(thresholdModel);
   const size = new THREE.Vector3();
   thresholdModelSize = thresholdBoundingBox.getSize(size)
