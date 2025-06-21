@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import * as THREE from "three"
 import GUI from 'lil-gui';
-import { computed, onMounted, ref, useTemplateRef } from 'vue'
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { DRACOLoader, GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import gsap from "gsap";
@@ -28,7 +28,8 @@ const POSITIONS = {
   MOUSE_Y: 0.3,
   MOUSE_START_Z: 3,
   MOUSE_X: 0.8,
-  CAMERA: { z: 8, y: 1 }
+  CAMERA: { z: 8, y: 1.25, x: 0 },
+  CAMERA_TO_START: { z: 70, y: 60, x: 80 }
 }
 
 // debug
@@ -59,7 +60,7 @@ const canvas = useTemplateRef('canvas')
 
 // Gameover 
 let gameOver = false
-let gameStart = false
+const gameStart = ref(false)
 
 
 
@@ -153,7 +154,7 @@ const lastRoomPosition = computed(() => {
 
 
 function getNextRoomPosition() {
-  if (lastRoomIndex.value === -1) return -3; // Initial position
+  if (lastRoomIndex.value === -1) return -2.35; // Initial position
   return lastRoomPosition.value - roomModelSize.z + 0.1
 }
 
@@ -226,22 +227,56 @@ function createRoom() {
 }
 
 function initRooms() {
-  for (let i = 0; i < rooms.value.length; i++) {
+  for (let i = 0; i < rooms.value.length - 1; i++) {
 
     createRoom()
   }
 }
 
 
+
 function setupControls(camera: THREE.PerspectiveCamera) {
   const controls = new OrbitControls(camera, canvas.value)
   controls.enableDamping = true
+  // controls.enableZoom = false;    // Disable zoom
+  // controls.enablePan = false;     // Disable pan
+  // controls.enableRotate = false;  // Disable manual rotation
   return controls
 }
 
 
 // Jump
 const jump = ref(false)
+
+function animateCameraToCloseUp(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
+
+
+  // Animate to close-up view
+  gsap.to(camera.position, {
+    x: POSITIONS.CAMERA.x,
+    y: POSITIONS.CAMERA.y,
+    z: POSITIONS.CAMERA.z,
+    duration: 5, // seconds
+    ease: "power2.inOut",
+    // onUpdate: () => {
+    //   // Keep the camera looking at the castle (or desired target)
+    //   camera.lookAt(new THREE.Vector3(0, 0, 0));
+    //   controls.update(); // Required if using OrbitControls
+    // },
+    // onComplete: () => {
+    //   console.log("Camera animation complete");
+    //   // Optional: Disable controls during close-up
+    //   controls.enabled = false;
+    // }
+  })
+  gsap.to(controls.target, {
+    z: -20,
+    duration: 5, // seconds
+    ease: "power2.inOut",
+  });
+
+
+}
 
 function setupKeyboardControls(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
   const handleKeydown = (e: KeyboardEvent) => {
@@ -258,13 +293,18 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
 
     // Handle game start
     if (code === 'Space') {
-      gameStart = true
-      gameOver = false
-      return
+      animateCameraToCloseUp(controls, camera)
+      setTimeout(() => {
+        initRooms()
+        gameStart.value = true
+
+        return
+      }, 6000)
+
     }
 
     // Only handle movement if game has started
-    if (!gameStart || gameOver) return
+    if (!gameStart.value || gameOver) return
 
     // Handle movement 
     if (code === 'ArrowLeft') handleLeftMovement()
@@ -325,6 +365,9 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
   window.addEventListener('keydown', handleKeydown)
 }
 
+
+
+
 // Game loop
 function tick(
   renderer: THREE.WebGLRenderer,
@@ -345,7 +388,7 @@ function tick(
     controls.update()
     controls.autoRotate = false
 
-    if (gameStart && !gameOver) {
+    if (gameStart.value && !gameOver) {
       // updateFloorsAndDoors(deltaTime);
       updateRoom(deltaTime)
       updateMouseBoundSphere()
@@ -498,7 +541,51 @@ function updateMouseBoundSphere() {
     mouseBoundSphere.copy(mouse.geometry.boundingSphere).applyMatrix4(mouse.matrixWorld)
 }
 
+// castle 
 
+// floor 
+
+const alphaTexture = textureLoader.load('/texture/alpha.jpg')
+const floorColorTexture = textureLoader.load('/texture/ground/brown_mud_leaves_01_diff_1k.jpg')
+floorColorTexture.colorSpace = THREE.SRGBColorSpace
+const floorNormalTexture = textureLoader.load('/texture/ground/brown_mud_leaves_01_nor_gl_1k.png')
+const floorARMTexture = textureLoader.load('/texture/ground/brown_mud_leaves_01_arm_1k.jpg')
+
+
+floorColorTexture.repeat.set(10, 10)
+floorARMTexture.repeat.set(10, 10)
+floorNormalTexture.repeat.set(10, 10)
+
+floorColorTexture.wrapS = THREE.RepeatWrapping
+floorColorTexture.wrapT = THREE.RepeatWrapping
+
+floorARMTexture.wrapS = THREE.RepeatWrapping
+floorARMTexture.wrapT = THREE.RepeatWrapping
+
+floorNormalTexture.wrapS = THREE.RepeatWrapping
+floorNormalTexture.wrapT = THREE.RepeatWrapping
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80),
+  new THREE.MeshStandardMaterial({
+    alphaMap: alphaTexture,
+    transparent: true,
+    map: floorColorTexture,
+    aoMap: floorARMTexture,
+    roughnessMap: floorARMTexture,
+    metalnessMap: floorARMTexture,
+    normalMap: floorNormalTexture
+  }
+
+  ))
+floor.rotation.x = -Math.PI / 2
+scene.add(floor)
+
+
+scene.fog = new THREE.FogExp2('#112233', 0.015)
+
+
+
+let castleModel: THREE.Group
 onMounted(async () => {
   if (!canvas.value) return
 
@@ -520,9 +607,10 @@ onMounted(async () => {
   * Camera
   */
   // Base camera
-  const camera = new THREE.PerspectiveCamera(25, sizes.width / sizes.height, 0.1, 100)
-  camera.position.z = POSITIONS.CAMERA.z
-  camera.position.y = POSITIONS.CAMERA.y
+  const camera = new THREE.PerspectiveCamera(25, sizes.width / sizes.height, 0.1, 400)
+  camera.position.z = POSITIONS.CAMERA_TO_START.z
+  camera.position.y = POSITIONS.CAMERA_TO_START.y
+  camera.position.x = POSITIONS.CAMERA_TO_START.x
   scene.add(camera)
 
   // Controls
@@ -558,15 +646,14 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
 
 
-  const [doorLeftNobModelData, doorRightModelData, castle, room] = await Promise.all([
+  const [doorLeftNobModelData, doorRightModelData, castle, room, fakeTree] = await Promise.all([
     loadModel('/model/left-door-nob/door.gltf'),
     loadModel('/model/right-door-nob/door.gltf'),
     loadModel('/model/castle/castle.gltf'),
-    loadModel('/model/interior/interior.gltf')
+    loadModel('/model/interior/interior.gltf'),
+    loadModel('/model/tree-fake/tree-fake.gltf'),
+
   ])
-
-
-  roomModel = room
 
   // scene.add(roomModel)
   // gui.add(
@@ -578,19 +665,57 @@ onMounted(async () => {
 
   // )
 
-  // scene.add(castle)
 
+  castle.scale.set(0.76, 0.82, 0.82)
+  castleModel = castle
+  scene.add(castleModel)
+  roomModel = room
   const roomBoundingBox = new THREE.Box3().setFromObject(roomModel)
   const size = new THREE.Vector3()
   roomModelSize = roomBoundingBox.getSize(size)
-
 
   doorLeftNobModel = doorLeftNobModelData
 
   doorRightNobModel = doorRightModelData
   doorRightModelData.position.set(0.8, 0, 0)
 
-  initRooms()
+
+  createRoom()
+
+  const minDist = 10; // Closest trees are 10 units away
+  const maxDist = 70; // Farthest trees are 80 units away
+  const exclusionZone = { x: [-5, 5], z: [0, 30] }; // No trees spawn here
+  for (let i = 0; i < 400; i++) {
+    const tree = fakeTree.clone();
+    let x, z;
+    let attempts = 0;
+    const maxAttempts = 100; // Safety net to prevent infinite loops
+
+    do {
+      // Random angle and distance within range
+      const angle = Math.random() * Math.PI * 2;
+      const distance = minDist + Math.random() * (maxDist - minDist);
+
+      x = Math.cos(angle) * distance;
+      z = Math.sin(angle) * distance;
+      attempts++;
+    } while (
+      // Keep trying if inside exclusion zone
+      (x >= exclusionZone.x[0] && x <= exclusionZone.x[1] &&
+        z >= exclusionZone.z[0] && z <= exclusionZone.z[1]) &&
+      attempts < maxAttempts
+    );
+
+    // Skip if too many attempts (optional)
+    if (attempts >= maxAttempts) continue;
+
+    tree.position.set(x, 0, z);
+    scene.add(tree);
+  }
+
+
+
+
 
 
   // Start game loop
@@ -601,7 +726,12 @@ onMounted(async () => {
 })
 
 
+watch(gameStart, (newVal) => {
+  if (newVal) {
+    castleModel.visible = false
 
+  }
+})
 
 
 </script>
