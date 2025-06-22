@@ -29,12 +29,12 @@ const POSITIONS = {
   MOUSE_START_Z: 4,
   MOUSE_X: 0.8,
   CAMERA: { z: 8, y: 1.25, x: 0 },
-  // CAMERA_TO_START: { z: 70, y: 60, x: 80 }
-  CAMERA_TO_START: { z: 8, y: 1.25, x: 0 },
+  CAMERA_TO_START: { z: 60, y: 60, x: 60 }
+  // CAMERA_TO_START: { z: 8, y: 1.25, x: 0 },
 }
 
 // debug
-const gui = new GUI();
+// const gui = new GUI();
 const stats = new Stats()
 
 /**
@@ -171,7 +171,7 @@ const lastRoomPosition = computed(() => {
 
 
 function getNextRoomPosition() {
-  if (lastRoomIndex.value === -1) return -2.35; // Initial position
+  if (lastRoomIndex.value === -1) return -3; // Initial position
   return lastRoomPosition.value - roomModelSize.z + 0.1
 }
 
@@ -255,9 +255,9 @@ function initRooms() {
 function setupControls(camera: THREE.PerspectiveCamera) {
   const controls = new OrbitControls(camera, canvas.value)
   controls.enableDamping = true
-  // controls.enableZoom = false;    // Disable zoom
-  // controls.enablePan = false;     // Disable pan
-  // controls.enableRotate = false;  // Disable manual rotation
+  controls.enableZoom = false;    // Disable zoom
+  controls.enablePan = false;     // Disable pan
+  controls.enableRotate = false;  // Disable manual rotation
   return controls
 }
 
@@ -268,11 +268,12 @@ const jump = ref(false)
 function animateCameraToCloseUp(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
 
 
+
   // Animate to close-up view
   gsap.to(camera.position, {
-    x: POSITIONS.CAMERA.x,
     y: POSITIONS.CAMERA.y,
     z: POSITIONS.CAMERA.z,
+    x: POSITIONS.CAMERA.x,
     duration: 5, // seconds
     ease: "power2.inOut",
     // onUpdate: () => {
@@ -287,7 +288,7 @@ function animateCameraToCloseUp(controls: OrbitControls, camera: THREE.Perspecti
     // }
   })
   gsap.to(controls.target, {
-    z: -20,
+    z: -3,
     duration: 5, // seconds
     ease: "power2.inOut",
   });
@@ -297,14 +298,27 @@ function animateCameraToCloseUp(controls: OrbitControls, camera: THREE.Perspecti
 
 const moveSounds: HTMLAudioElement[] = []
 const MAX_SOUND_POOL = 3
-let currentSoundIndex = 0
+let currentMoveSoundIndex = 0
 
 for (let i = 0; i < MAX_SOUND_POOL; i++) {
   const moveSound = new Audio('/sound/zapsplat_cartoon_swoosh_swipe_whoosh_snatch_001_111185.mp3')
   moveSound.preload = 'auto'
-  moveSound.volume = 0.5
+  moveSound.volume = 0.2
   moveSounds.push(moveSound)
 }
+
+const jumpSounds: HTMLAudioElement[] = []
+let currentJumpSoundIndex = 0
+
+for (let i = 0; i < MAX_SOUND_POOL; i++) {
+  const jumpSound = new Audio('/sound/haiaa.mp3')
+  jumpSound.preload = 'auto'
+  jumpSounds.push(jumpSound)
+}
+
+
+const doorSound = new Audio('/sound/zapsplat_foley_cupboard_closet_door_wooden_old_hinge_creak_squeak_very_short_slight_004_106659.mp3')
+doorSound.volume = 0.1
 
 function setupKeyboardControls(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
   const handleKeydown = (e: KeyboardEvent) => {
@@ -318,18 +332,6 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
       e.preventDefault();
     }
 
-
-    // Handle game start
-    if (code === 'Space') {
-      // animateCameraToCloseUp(controls, camera)
-      // setTimeout(() => {
-      //   initRooms()
-      gameStart.value = true
-
-      //   return
-      // }, 6000)
-
-    }
 
     // Only handle movement if game has started
     if (!gameStart.value || gameOver.value) return
@@ -361,7 +363,10 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
     const currentTailRotationY = mouseTail.rotation.y
     const currentTailPositionY = mouseTail.position.y
 
-
+    const sound = jumpSounds[currentJumpSoundIndex]
+    currentJumpSoundIndex = (currentJumpSoundIndex + 1) % MAX_SOUND_POOL;
+    sound.currentTime = 0
+    sound.play()
     gsap.to(
       mouseModel.position, {
       y: 0.2,
@@ -374,7 +379,7 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
           ease: "bounce.out",
           onComplete: () => {
             jump.value = false
-          }
+          },
         });
         gsap.to(
           mouseLeftBackFoot.rotation, {
@@ -473,8 +478,8 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
       ease: "power2.out",
       x,
       onStart: () => {
-        const sound = moveSounds[currentSoundIndex]
-        currentSoundIndex = (currentSoundIndex + 1) % MAX_SOUND_POOL;
+        const sound = moveSounds[currentMoveSoundIndex]
+        currentMoveSoundIndex = (currentMoveSoundIndex + 1) % MAX_SOUND_POOL;
         sound.currentTime = 0
         sound.play()
       }
@@ -496,7 +501,10 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
 
 
 
-
+const distance = ref(0)
+function updateDistance(delta: number) {
+  distance.value += delta * SPEED / 2;
+}
 // Game loop
 function tick(
   renderer: THREE.WebGLRenderer,
@@ -526,7 +534,7 @@ function tick(
     if (gameStart.value && !gameOver.value) {
 
       updateRoom(deltaTime)
-
+      updateDistance(deltaTime)
       if (!jump.value) {
         mouseLeftBackFoot.position.z = initialBackFootPositionZ + Math.sin(elapsedTime * walkingSpeed) * 0.1
         mouseLeftBackFoot.rotation.x = Math.sin(elapsedTime * walkingSpeed) * 0.2;
@@ -537,9 +545,6 @@ function tick(
         mouseTail.position.y = mouseTailPositionY + bodyMovement
 
       }
-
-
-
 
 
 
@@ -723,6 +728,44 @@ scene.fog = new THREE.FogExp2('#112233', 0.015)
 
 
 let castleModel: THREE.Group
+
+let camera: THREE.PerspectiveCamera
+let controls: OrbitControls
+
+const showButton = ref(true)
+function startGame() {
+  showButton.value = false
+  animateCameraToCloseUp(controls, camera)
+
+
+  const rightDoor = castleModel.getObjectByName("right-door") as THREE.Object3D
+  const leftDoor = castleModel.getObjectByName("left-door") as THREE.Object3D
+
+
+  gsap.to(rightDoor.rotation, {
+    y: Math.PI / 2,
+    ease: 'power1.out',
+    duration: 1,
+    delay: 3,
+    onStart: () => {
+      doorSound.play()
+    }
+  })
+  gsap.to(leftDoor.rotation, {
+    y: -Math.PI / 2,
+    ease: 'power1.out',
+    duration: 1,
+    delay: 3
+  })
+  setTimeout(() => {
+    gameStart.value = true
+    backgroundBeforeGameStart.pause()
+    gameBackground.currentTime = 0
+    gameBackground.play()
+    return
+  }, 6000)
+}
+
 onMounted(async () => {
   if (!canvas.value) return
 
@@ -744,14 +787,14 @@ onMounted(async () => {
   * Camera
   */
   // Base camera
-  const camera = new THREE.PerspectiveCamera(25, sizes.width / sizes.height, 0.1, 400)
+  camera = new THREE.PerspectiveCamera(25, sizes.width / sizes.height, 0.1, 400)
   camera.position.z = POSITIONS.CAMERA_TO_START.z
   camera.position.y = POSITIONS.CAMERA_TO_START.y
   camera.position.x = POSITIONS.CAMERA_TO_START.x
   scene.add(camera)
 
   // Controls
-  const controls = setupControls(camera)
+  controls = setupControls(camera)
 
   setupKeyboardControls(controls, camera)
 
@@ -783,15 +826,18 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
 
 
-  const [doorLeftNobModelData, doorRightModelData, castle, room, fakeTree, mouse] = await Promise.all([
+  const [doorLeftNobModelData, doorRightModelData, castle, room, fakeTree, mouse, leftOutsideDoor, rightOutsideDoor] = await Promise.all([
     loadModel('/model/left-door-nob/door.gltf'),
     loadModel('/model/right-door-nob/door.gltf'),
     loadModel('/model/castle/castle.gltf'),
     loadModel('/model/interior/interior.gltf'),
     loadModel('/model/tree-fake/tree-fake.gltf'),
-    loadModel('/model/mouse/mouse.gltf')
+    loadModel('/model/mouse/mouse.gltf'),
+    loadModel('/model/left-outside-door/left-outside-door.gltf'),
+    loadModel('/model/right-outside-door/right-outside-door.gltf')
 
   ])
+
 
   const size = new THREE.Vector3()
 
@@ -807,19 +853,6 @@ onMounted(async () => {
   mouseTail = mouseModel.getObjectByName('tail') as THREE.Object3D
   mouseTailPositionY = mouseTail.position.y
 
-
-
-
-  // scene.add(roomModel)
-  // gui.add(
-  //   roomModel.rotation,
-  //   "y",
-  //   1,
-  //   10,
-  //   0.01
-
-  // )
-
   roomModel = room
   const roomBoundingBox = new THREE.Box3().setFromObject(roomModel)
 
@@ -832,47 +865,41 @@ onMounted(async () => {
 
   initRooms()
   initMouse()
-  // createRoom()
 
 
-  castle.scale.set(0.76, 0.82, 0.82)
   castleModel = castle
   scene.add(castleModel)
 
-  // const minDist = 10; // Closest trees are 10 units away
-  // const maxDist = 70; // Farthest trees are 80 units away
-  // const exclusionZone = { x: [-5, 5], z: [0, 30] }; // No trees spawn here
-  // for (let i = 0; i < 400; i++) {
-  //   const tree = fakeTree.clone();
-  //   let x, z;
-  //   let attempts = 0;
-  //   const maxAttempts = 100; // Safety net to prevent infinite loops
+  const minDist = 10; // Closest trees are 10 units away
+  const maxDist = 70; // Farthest trees are 80 units away
+  const exclusionZone = { x: [-5, 5], z: [0, 30] }; // No trees spawn here
+  for (let i = 0; i < 400; i++) {
+    const tree = fakeTree.clone();
+    let x, z;
+    let attempts = 0;
+    const maxAttempts = 100; // Safety net to prevent infinite loops
 
-  //   do {
-  //     // Random angle and distance within range
-  //     const angle = Math.random() * Math.PI * 2;
-  //     const distance = minDist + Math.random() * (maxDist - minDist);
+    do {
+      // Random angle and distance within range
+      const angle = Math.random() * Math.PI * 2;
+      const distance = minDist + Math.random() * (maxDist - minDist);
 
-  //     x = Math.cos(angle) * distance;
-  //     z = Math.sin(angle) * distance;
-  //     attempts++;
-  //   } while (
-  //     // Keep trying if inside exclusion zone
-  //     (x >= exclusionZone.x[0] && x <= exclusionZone.x[1] &&
-  //       z >= exclusionZone.z[0] && z <= exclusionZone.z[1]) &&
-  //     attempts < maxAttempts
-  //   );
+      x = Math.cos(angle) * distance;
+      z = Math.sin(angle) * distance;
+      attempts++;
+    } while (
+      // Keep trying if inside exclusion zone
+      (x >= exclusionZone.x[0] && x <= exclusionZone.x[1] &&
+        z >= exclusionZone.z[0] && z <= exclusionZone.z[1]) &&
+      attempts < maxAttempts
+    );
 
-  //   // Skip if too many attempts (optional)
-  //   if (attempts >= maxAttempts) continue;
+    // Skip if too many attempts (optional)
+    if (attempts >= maxAttempts) continue;
 
-  //   tree.position.set(x, 0, z);
-  //   scene.add(tree);
-  // }
-
-
-
-
+    tree.position.set(x, 0, z);
+    scene.add(tree);
+  }
 
 
   // Start game loop
@@ -885,31 +912,58 @@ onMounted(async () => {
 // https://www.zapsplat.com/music/game-music-action-retro-8-bit-style-bouncy-hard-dance-track-with-electronic-synths-and-drums/
 // need credit page
 const gameBackground = new Audio('/sound/music_zapsplat_game_music_action_retro_8_bit_repeating_016.mp3')
+gameBackground.volume = 0.4
 gameBackground.loop = true
 
-watch(gameStart, (gameStarted) => {
-  if (gameStarted) {
-    castleModel.visible = false
-  }
-})
 
+const backgroundBeforeGameStart = new Audio('/sound/Blastwave_FX_ForestNight_BW.1759.mp3')
+backgroundBeforeGameStart.loop = true
+backgroundBeforeGameStart.volume = 0.3
 watchEffect(() => {
-  if (gameStart.value && !gameOver.value) {
-    gameBackground.currentTime = 0
-    gameBackground.play()
-  } else {
+  if (gameStart.value) {
+    // castleModel.visible = false
+
+
+
+  }
+
+  console.log(gameStart.value && gameOver.value)
+  if (gameStart.value && gameOver.value) {
     gameBackground.pause()
   }
 })
 
 
+
 </script>
 
 <template>
-  <canvas class="webgl" ref="canvas"></canvas>
+
+  <canvas class="webgl" ref="canvas">
+
+  </canvas>
+  <button v-if="showButton" @click="startGame">Game Start</button>
+  <p>Distance: {{ Math.floor(distance) }}</p>
 </template>
 
 <style>
+button {
+  position: absolute;
+  font-size: 3rem;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+p {
+  position: absolute;
+  font-size: 2rem;
+  right: 2rem;
+  top: 1rem;
+  color: white;
+
+}
+
 * {
   margin: 0;
   padding: 0;
