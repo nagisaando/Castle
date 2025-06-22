@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import * as THREE from "three"
-// import GUI from 'lil-gui';
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
+import GUI from 'lil-gui';
+import { computed, onMounted, ref, useTemplateRef, watch, watchEffect } from 'vue'
 import { DRACOLoader, GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import gsap from "gsap";
@@ -34,7 +34,7 @@ const POSITIONS = {
 }
 
 // debug
-// const gui = new GUI();
+const gui = new GUI();
 const stats = new Stats()
 
 /**
@@ -59,8 +59,8 @@ type DoorGroup = {
 const canvas = useTemplateRef('canvas')
 
 
-// Gameover 
-let gameOver = false
+// Gameover
+let gameOver = ref(false)
 const gameStart = ref(false)
 
 
@@ -82,8 +82,8 @@ function loadModel(url: string): Promise<THREE.Group> {
     gltfLoader.load(url, (gltf) => {
       resolve(gltf.scene)
     },
-      (_xhl) => {
-        // const percentage = (xhl.loaded / xhl.total * 100).toFixed(0)
+      (xhl) => {
+        const percentage = (xhl.loaded / xhl.total * 100).toFixed(0)
         // console.log(`Loading: ${percentage}%`)
       },
       (err) => reject(err)
@@ -265,35 +265,46 @@ function setupControls(camera: THREE.PerspectiveCamera) {
 // Jump
 const jump = ref(false)
 
-// function animateCameraToCloseUp(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
+function animateCameraToCloseUp(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
 
 
-//   // Animate to close-up view
-//   gsap.to(camera.position, {
-//     x: POSITIONS.CAMERA.x,
-//     y: POSITIONS.CAMERA.y,
-//     z: POSITIONS.CAMERA.z,
-//     duration: 5, // seconds
-//     ease: "power2.inOut",
-//     // onUpdate: () => {
-//     //   // Keep the camera looking at the castle (or desired target)
-//     //   camera.lookAt(new THREE.Vector3(0, 0, 0));
-//     //   controls.update(); // Required if using OrbitControls
-//     // },
-//     // onComplete: () => {
-//     //   console.log("Camera animation complete");
-//     //   // Optional: Disable controls during close-up
-//     //   controls.enabled = false;
-//     // }
-//   })
-//   gsap.to(controls.target, {
-//     z: -20,
-//     duration: 5, // seconds
-//     ease: "power2.inOut",
-//   });
+  // Animate to close-up view
+  gsap.to(camera.position, {
+    x: POSITIONS.CAMERA.x,
+    y: POSITIONS.CAMERA.y,
+    z: POSITIONS.CAMERA.z,
+    duration: 5, // seconds
+    ease: "power2.inOut",
+    // onUpdate: () => {
+    //   // Keep the camera looking at the castle (or desired target)
+    //   camera.lookAt(new THREE.Vector3(0, 0, 0));
+    //   controls.update(); // Required if using OrbitControls
+    // },
+    // onComplete: () => {
+    //   console.log("Camera animation complete");
+    //   // Optional: Disable controls during close-up
+    //   controls.enabled = false;
+    // }
+  })
+  gsap.to(controls.target, {
+    z: -20,
+    duration: 5, // seconds
+    ease: "power2.inOut",
+  });
 
 
-// }
+}
+
+const moveSounds: HTMLAudioElement[] = []
+const MAX_SOUND_POOL = 3
+let currentSoundIndex = 0
+
+for (let i = 0; i < MAX_SOUND_POOL; i++) {
+  const moveSound = new Audio('/sound/zapsplat_cartoon_swoosh_swipe_whoosh_snatch_001_111185.mp3')
+  moveSound.preload = 'auto'
+  moveSound.volume = 0.5
+  moveSounds.push(moveSound)
+}
 
 function setupKeyboardControls(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
   const handleKeydown = (e: KeyboardEvent) => {
@@ -321,7 +332,7 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
     }
 
     // Only handle movement if game has started
-    if (!gameStart.value || gameOver) return
+    if (!gameStart.value || gameOver.value) return
 
     // Handle movement 
     if (code === 'ArrowLeft') handleLeftMovement()
@@ -460,7 +471,13 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
     gsap.to(mouseModel.position, {
       duration: 0.2,
       ease: "power2.out",
-      x
+      x,
+      onStart: () => {
+        const sound = moveSounds[currentSoundIndex]
+        currentSoundIndex = (currentSoundIndex + 1) % MAX_SOUND_POOL;
+        sound.currentTime = 0
+        sound.play()
+      }
     });
     gsap.to(controls.target, {
       duration: 0.2,
@@ -491,8 +508,8 @@ function tick(
 
   let previousTime = 0
   const walkingSpeed = 20; // Adjust as needed
-  // const stepHeight = 0.05; // How high the feet lift
-  // const stepLength = 0.03; // How far forward/back feet mo
+  const stepHeight = 0.05; // How high the feet lift
+  const stepLength = 0.03; // How far forward/back feet mo
 
 
 
@@ -506,7 +523,7 @@ function tick(
     controls.update()
     controls.autoRotate = false
 
-    if (gameStart.value && !gameOver) {
+    if (gameStart.value && !gameOver.value) {
 
       updateRoom(deltaTime)
 
@@ -629,7 +646,7 @@ function checkDoorCollisions(door: DoorGroup) {
     doorsToCheck.forEach(door => door.boundingBox.setFromObject(door.obj))
     mouseModelBoundingBox.setFromObject(mouseModel)
     if (doorsToCheck.some(door => mouseModelBoundingBox.intersectsBox(door.boundingBox))) {
-      gameOver = true
+      gameOver.value = true
     }
   }
 }
@@ -766,7 +783,7 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
 
 
-  const [doorLeftNobModelData, doorRightModelData, castle, room, _fakeTree, mouse] = await Promise.all([
+  const [doorLeftNobModelData, doorRightModelData, castle, room, fakeTree, mouse] = await Promise.all([
     loadModel('/model/left-door-nob/door.gltf'),
     loadModel('/model/right-door-nob/door.gltf'),
     loadModel('/model/castle/castle.gltf'),
@@ -865,11 +882,23 @@ onMounted(async () => {
 
 })
 
+// https://www.zapsplat.com/music/game-music-action-retro-8-bit-style-bouncy-hard-dance-track-with-electronic-synths-and-drums/
+// need credit page
+const gameBackground = new Audio('/sound/music_zapsplat_game_music_action_retro_8_bit_repeating_016.mp3')
+gameBackground.loop = true
 
-watch(gameStart, (newVal) => {
-  if (newVal) {
+watch(gameStart, (gameStarted) => {
+  if (gameStarted) {
     castleModel.visible = false
+  }
+})
 
+watchEffect(() => {
+  if (gameStart.value && !gameOver.value) {
+    gameBackground.currentTime = 0
+    gameBackground.play()
+  } else {
+    gameBackground.pause()
   }
 })
 
