@@ -25,11 +25,12 @@ const SPEED = 3.5
 const POSITIONS = {
   DOOR_X_OFFSET: SIZES.FLOOR.width / 3,
   DOOR_Y: 0.08,
-  MOUSE_Y: 0.3,
-  MOUSE_START_Z: 3,
+  MOUSE_Y: 0,
+  MOUSE_START_Z: 4,
   MOUSE_X: 0.8,
   CAMERA: { z: 8, y: 1.25, x: 0 },
-  CAMERA_TO_START: { z: 70, y: 60, x: 80 }
+  // CAMERA_TO_START: { z: 70, y: 60, x: 80 }
+  CAMERA_TO_START: { z: 8, y: 1.25, x: 0 },
 }
 
 // debug
@@ -117,14 +118,30 @@ scene.add(directonalLightHelper)
 
 
 // Mouse
-const mouse = new THREE.Mesh(
-  new THREE.SphereGeometry(SIZES.MOUSE), new THREE.MeshBasicMaterial()
-)
-mouse.position.set(0, POSITIONS.MOUSE_Y, POSITIONS.MOUSE_START_Z)
 
-const mouseBoundSphere = new THREE.Sphere(mouse.position, SIZES.MOUSE * 1.25)
-scene.add(mouse)
+let mouseModel: THREE.Group
+let mouseRightBackFoot: THREE.Object3D
+let mouseLeftBackFoot: THREE.Object3D
+let mouseModelBoundingBox: THREE.Box3
+let initialBackFootPositionZ: number
+let mouseBody: THREE.Object3D
+let mouseBodyPositionY: number
+let mouseTail: THREE.Object3D
+let mouseTailPositionY: number
 
+// const mouse = new THREE.Mesh(
+//   new THREE.SphereGeometry(SIZES.MOUSE), new THREE.MeshBasicMaterial()
+// )
+
+// const mouseBoundSphere = new THREE.Sphere(mouse.position, SIZES.MOUSE * 1.25)
+
+// mouse.position.set(0, POSITIONS.MOUSE_Y, POSITIONS.MOUSE_START_Z)
+// scene.add(mouse)
+
+function initMouse() {
+  mouseModel.position.set(0, POSITIONS.MOUSE_Y, POSITIONS.MOUSE_START_Z)
+  scene.add(mouseModel)
+}
 
 
 
@@ -136,7 +153,7 @@ type RoomGroup = {
     door3: Door,
   },
   RoomModel: THREE.Group,
-  hide: false
+  hide: boolean
 }
 const rooms = ref<RoomGroup[]>(new Array(6))
 
@@ -227,8 +244,8 @@ function createRoom() {
 }
 
 function initRooms() {
-  for (let i = 0; i < rooms.value.length - 1; i++) {
-
+  // for (let i = 0; i < rooms.value.length - 1; i++) {
+  for (let i = 0; i < rooms.value.length; i++) {
     createRoom()
   }
 }
@@ -293,13 +310,13 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
 
     // Handle game start
     if (code === 'Space') {
-      animateCameraToCloseUp(controls, camera)
-      setTimeout(() => {
-        initRooms()
-        gameStart.value = true
+      // animateCameraToCloseUp(controls, camera)
+      // setTimeout(() => {
+      //   initRooms()
+      gameStart.value = true
 
-        return
-      }, 6000)
+      //   return
+      // }, 6000)
 
     }
 
@@ -314,38 +331,133 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
   }
 
   const handleLeftMovement = () => {
-    if (mouse.position.x === 0) mouseMove(-POSITIONS.MOUSE_X)
-    if (mouse.position.x === POSITIONS.MOUSE_X) mouseMove(0)
+    if (mouseModel.position.x === 0) mouseMove(-POSITIONS.MOUSE_X)
+    if (mouseModel.position.x === POSITIONS.MOUSE_X) mouseMove(0)
   }
 
   const handleRightMovement = () => {
-    if (mouse.position.x === 0) mouseMove(POSITIONS.MOUSE_X)
-    if (mouse.position.x === -POSITIONS.MOUSE_X) mouseMove(0)
+    if (mouseModel.position.x === 0) mouseMove(POSITIONS.MOUSE_X)
+    if (mouseModel.position.x === -POSITIONS.MOUSE_X) mouseMove(0)
   }
 
   const handleJump = () => {
     jump.value = true
+
+    const currentRightFootY = mouseRightBackFoot.position.y;
+    const currentLeftFootRotationX = mouseLeftBackFoot.rotation.x;
+    const currentRightFootRotationX = mouseRightBackFoot.rotation.x;
+    const currentBodyRotationX = mouseBody.rotation.x
+    const currentTailRotationY = mouseTail.rotation.y
+    const currentTailPositionY = mouseTail.position.y
+
+
     gsap.to(
-      mouse.position, {
-      y: 0.6,
-      duration: 0.25,
+      mouseModel.position, {
+      y: 0.2,
+      duration: 0.5,
       ease: "power1.out",
       onComplete: () => {
-        gsap.to(mouse.position, {
-          y: 0.4, // Return to original height
+        gsap.to(mouseModel.position, {
+          y: 0, // Return to original height
           duration: 0.25,
           ease: "bounce.out",
           onComplete: () => {
             jump.value = false
           }
         });
+        gsap.to(
+          mouseLeftBackFoot.rotation, {
+          x: currentLeftFootRotationX,
+          duration: 0.2,
+          ease: "power1.inOut",
+        })
+        gsap.to(
+          mouseRightBackFoot.rotation, {
+          x: currentRightFootRotationX,
+          duration: 0.2,
+          ease: "power1.inOut",
+        })
+        gsap.to(
+          mouseRightBackFoot.position, {
+          y: currentRightFootY,
+          duration: 0.2,
+          ease: "power1.inOut",
+        })
+        gsap.to(
+          mouseBody.rotation, {
+          x: currentBodyRotationX,
+          duration: 0.2,
+          ease: "power1.inOut",
+        })
+        gsap.to(
+          mouseTail.rotation, {
+          y: currentTailRotationY,
+          duration: 0.2,
+          ease: "power1.inOut",
+        })
+        gsap.to(
+          mouseTail.position, {
+          y: currentTailPositionY,
+          duration: 0.2,
+          ease: "power1.out",
+        })
+
+
       }
-    }
-    )
+    })
+
+    gsap.to(
+      mouseLeftBackFoot.rotation, {
+      x: `-=${Math.PI / 2}`,
+      duration: 0.2,
+      ease: "power1.out",
+    })
+
+    gsap.to(
+      mouseRightBackFoot.rotation, {
+      x: `-=${Math.PI / 2.4}`,
+      duration: 0.2,
+      ease: "power1.out",
+    })
+
+
+    gsap.to(
+      mouseRightBackFoot.position, {
+      y: `+=0.01`,
+      duration: 0.2,
+      ease: "power1.out",
+    })
+
+    gsap.to(
+      mouseBody.rotation, {
+      x: -0.4,
+      duration: 0.2,
+      ease: "power1.out",
+    })
+
+    gsap.to(
+      mouseTail.rotation, {
+      y: -0.1,
+      duration: 0.2,
+      ease: "power1.out",
+    })
+
+    gsap.to(
+      mouseTail.position, {
+      y: `+=0.1`,
+      duration: 0.2,
+      ease: "power1.out",
+    })
+
+
+
+
+
+
   }
 
   const mouseMove = (x: number) => {
-    gsap.to(mouse.position, {
+    gsap.to(mouseModel.position, {
       duration: 0.2,
       ease: "power2.out",
       x
@@ -378,8 +490,14 @@ function tick(
   const clock = new THREE.Clock()
 
   let previousTime = 0
+  const walkingSpeed = 20; // Adjust as needed
+  const stepHeight = 0.05; // How high the feet lift
+  const stepLength = 0.03; // How far forward/back feet mo
+
+
 
   const animate = () => {
+
     const elapsedTime = clock.getElapsedTime()
     const deltaTime = elapsedTime - previousTime
     previousTime = elapsedTime
@@ -389,9 +507,23 @@ function tick(
     controls.autoRotate = false
 
     if (gameStart.value && !gameOver) {
-      // updateFloorsAndDoors(deltaTime);
+
       updateRoom(deltaTime)
-      updateMouseBoundSphere()
+
+      if (!jump.value) {
+        mouseLeftBackFoot.position.z = initialBackFootPositionZ + Math.sin(elapsedTime * walkingSpeed) * 0.1
+        mouseLeftBackFoot.rotation.x = Math.sin(elapsedTime * walkingSpeed) * 0.2;
+        mouseRightBackFoot.position.z = initialBackFootPositionZ + Math.sin((elapsedTime) * walkingSpeed + Math.PI) * 0.1
+        mouseRightBackFoot.rotation.x = Math.sin(elapsedTime * walkingSpeed) * 0.2;
+        const bodyMovement = Math.sin(elapsedTime * walkingSpeed) * 0.005
+        mouseBody.position.y = mouseBodyPositionY + bodyMovement
+        mouseTail.position.y = mouseTailPositionY + bodyMovement
+
+      }
+
+
+
+
 
 
     }
@@ -428,9 +560,9 @@ function updateRoom(deltaTime: number) {
     handleDoorOpening(room.doors)
 
     // Handle door fading 
-    // if (!door.hide && door.door2.obj.position.z > 2.5) {
-    //   fadeDoors(room.doors)
-    // }
+    if (!room.hide && room.doors.door2.obj.position.z > 5) {
+      fadeDoors(room)
+    }
 
     // Recycle doors that go off screen
     if (room.doors.door1.obj.position.z > 8) {
@@ -473,6 +605,13 @@ function resetRoomGroup(roomGroup: RoomGroup) {
   roomGroup.doors.door3.open = false;
   roomGroup.doors.door3.opened = false;
 
+
+  // make the doors visible 
+  roomGroup.doors.door1.obj.visible = true;
+  roomGroup.doors.door2.obj.visible = true;
+  roomGroup.doors.door3.obj.visible = true;
+
+
   // Randomly open one door
   const doorsToOpen = ['door1', 'door2', 'door3'] as const
   const randomDoor = doorsToOpen[Math.floor(Math.random() * 3)]
@@ -484,12 +623,12 @@ function resetRoomGroup(roomGroup: RoomGroup) {
 
 
 function checkDoorCollisions(door: DoorGroup) {
-  if (Math.abs(door.door1.obj.position.z - mouse.position.z) < 1) {
+  if (Math.abs(door.door1.obj.position.z - mouseModel.position.z) < 1) {
     const doorsToCheck = [door.door1, door.door2, door.door3]
     // update bounding floors 
     doorsToCheck.forEach(door => door.boundingBox.setFromObject(door.obj))
-
-    if (doorsToCheck.some(door => mouseBoundSphere.intersectsBox(door.boundingBox))) {
+    mouseModelBoundingBox.setFromObject(mouseModel)
+    if (doorsToCheck.some(door => mouseModelBoundingBox.intersectsBox(door.boundingBox))) {
       gameOver = true
     }
   }
@@ -514,32 +653,13 @@ function handleDoorOpening(door: DoorGroup) {
   openDoor(door.door3, -POSITIONS.DOOR_X_OFFSET)
 }
 
-function fadeDoors(door: DoorGroup) {
-  door.hide = true;
-  [door.door1, door.door2, door.door3].forEach((door) => {
-    gsap.to(door.obj.material, {
-      opacity: '0',
-      duration: 2,
-      ease: "slow(0.9,0.4,false)",
-    })
-    gsap.set(door.obj.material, {
-      opacity: '1',
-      delay: 2
-
-    })
+function fadeDoors(room: RoomGroup) {
+  room.hide = true;
+  [room.doors.door1, room.doors.door2, room.doors.door3].forEach((door) => {
+    door.obj.visible = false
   })
 }
 
-
-function updateMouseBoundSphere() {
-  // Critical: Update the mouse's world matrix before collision check.
-  // Three.js doesn't automatically update world transforms until render time.
-  // Without this, collision detection would use stale position data from 
-  // the previous frame, making movement unresponsive.
-  mouse.updateMatrixWorld();
-  if (mouse.geometry.boundingSphere)
-    mouseBoundSphere.copy(mouse.geometry.boundingSphere).applyMatrix4(mouse.matrixWorld)
-}
 
 // castle 
 
@@ -646,14 +766,32 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
 
 
-  const [doorLeftNobModelData, doorRightModelData, castle, room, fakeTree] = await Promise.all([
+  const [doorLeftNobModelData, doorRightModelData, castle, room, fakeTree, mouse] = await Promise.all([
     loadModel('/model/left-door-nob/door.gltf'),
     loadModel('/model/right-door-nob/door.gltf'),
     loadModel('/model/castle/castle.gltf'),
     loadModel('/model/interior/interior.gltf'),
     loadModel('/model/tree-fake/tree-fake.gltf'),
+    loadModel('/model/mouse/mouse.gltf')
 
   ])
+
+  const size = new THREE.Vector3()
+
+  mouseModel = mouse
+  mouseRightBackFoot = mouseModel.getObjectByName("right-rear-foot") as THREE.Object3D
+  mouseLeftBackFoot = mouseModel.getObjectByName("left-rear-foot") as THREE.Object3D
+  initialBackFootPositionZ = mouseLeftBackFoot.position.z
+  mouseModelBoundingBox = new THREE.Box3().setFromObject(mouseModel)
+
+  mouseBody = mouseModel.getObjectByName('body') as THREE.Object3D
+  mouseBodyPositionY = mouseBody.position.y
+
+  mouseTail = mouseModel.getObjectByName('tail') as THREE.Object3D
+  mouseTailPositionY = mouseTail.position.y
+
+
+
 
   // scene.add(roomModel)
   // gui.add(
@@ -665,13 +803,9 @@ onMounted(async () => {
 
   // )
 
-
-  castle.scale.set(0.76, 0.82, 0.82)
-  castleModel = castle
-  scene.add(castleModel)
   roomModel = room
   const roomBoundingBox = new THREE.Box3().setFromObject(roomModel)
-  const size = new THREE.Vector3()
+
   roomModelSize = roomBoundingBox.getSize(size)
 
   doorLeftNobModel = doorLeftNobModelData
@@ -679,39 +813,45 @@ onMounted(async () => {
   doorRightNobModel = doorRightModelData
   doorRightModelData.position.set(0.8, 0, 0)
 
+  initRooms()
+  initMouse()
+  // createRoom()
 
-  createRoom()
 
-  const minDist = 10; // Closest trees are 10 units away
-  const maxDist = 70; // Farthest trees are 80 units away
-  const exclusionZone = { x: [-5, 5], z: [0, 30] }; // No trees spawn here
-  for (let i = 0; i < 400; i++) {
-    const tree = fakeTree.clone();
-    let x, z;
-    let attempts = 0;
-    const maxAttempts = 100; // Safety net to prevent infinite loops
+  castle.scale.set(0.76, 0.82, 0.82)
+  castleModel = castle
+  scene.add(castleModel)
 
-    do {
-      // Random angle and distance within range
-      const angle = Math.random() * Math.PI * 2;
-      const distance = minDist + Math.random() * (maxDist - minDist);
+  // const minDist = 10; // Closest trees are 10 units away
+  // const maxDist = 70; // Farthest trees are 80 units away
+  // const exclusionZone = { x: [-5, 5], z: [0, 30] }; // No trees spawn here
+  // for (let i = 0; i < 400; i++) {
+  //   const tree = fakeTree.clone();
+  //   let x, z;
+  //   let attempts = 0;
+  //   const maxAttempts = 100; // Safety net to prevent infinite loops
 
-      x = Math.cos(angle) * distance;
-      z = Math.sin(angle) * distance;
-      attempts++;
-    } while (
-      // Keep trying if inside exclusion zone
-      (x >= exclusionZone.x[0] && x <= exclusionZone.x[1] &&
-        z >= exclusionZone.z[0] && z <= exclusionZone.z[1]) &&
-      attempts < maxAttempts
-    );
+  //   do {
+  //     // Random angle and distance within range
+  //     const angle = Math.random() * Math.PI * 2;
+  //     const distance = minDist + Math.random() * (maxDist - minDist);
 
-    // Skip if too many attempts (optional)
-    if (attempts >= maxAttempts) continue;
+  //     x = Math.cos(angle) * distance;
+  //     z = Math.sin(angle) * distance;
+  //     attempts++;
+  //   } while (
+  //     // Keep trying if inside exclusion zone
+  //     (x >= exclusionZone.x[0] && x <= exclusionZone.x[1] &&
+  //       z >= exclusionZone.z[0] && z <= exclusionZone.z[1]) &&
+  //     attempts < maxAttempts
+  //   );
 
-    tree.position.set(x, 0, z);
-    scene.add(tree);
-  }
+  //   // Skip if too many attempts (optional)
+  //   if (attempts >= maxAttempts) continue;
+
+  //   tree.position.set(x, 0, z);
+  //   scene.add(tree);
+  // }
 
 
 
