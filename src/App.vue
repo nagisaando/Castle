@@ -727,7 +727,8 @@ scene.fog = new THREE.FogExp2('#112233', 0.015)
 
 
 
-let castleModel: THREE.Group
+let castleModel: THREE.Group | null
+let trees: THREE.Group[] = []
 
 let camera: THREE.PerspectiveCamera
 let controls: OrbitControls
@@ -737,7 +738,7 @@ function startGame() {
   showButton.value = false
   animateCameraToCloseUp(controls, camera)
 
-
+  if (!castleModel) return
   const rightDoor = castleModel.getObjectByName("right-door") as THREE.Object3D
   const leftDoor = castleModel.getObjectByName("left-door") as THREE.Object3D
 
@@ -877,7 +878,7 @@ onMounted(async () => {
     const tree = fakeTree.clone();
     let x, z;
     let attempts = 0;
-    const maxAttempts = 100; // Safety net to prevent infinite loops
+    const maxAttempts = 10; // Safety net to prevent infinite loops
 
     do {
       // Random angle and distance within range
@@ -899,6 +900,7 @@ onMounted(async () => {
 
     tree.position.set(x, 0, z);
     scene.add(tree);
+    trees.push(tree)
   }
 
 
@@ -908,6 +910,19 @@ onMounted(async () => {
 
 
 })
+
+function cleanUpSceneWhenGameStarts() {
+  if (castleModel) {
+    scene.remove(castleModel);
+    castleModel = null; // Allow garbage collection
+  }
+  trees.forEach(tree => {
+    scene.remove(tree)
+    trees = []
+  })
+
+  scene.fog = null
+}
 
 // https://www.zapsplat.com/music/game-music-action-retro-8-bit-style-bouncy-hard-dance-track-with-electronic-synths-and-drums/
 // need credit page
@@ -923,11 +938,9 @@ watchEffect(() => {
   if (gameStart.value) {
     // castleModel.visible = false
 
-
+    cleanUpSceneWhenGameStarts()
 
   }
-
-  console.log(gameStart.value && gameOver.value)
   if (gameStart.value && gameOver.value) {
     gameBackground.pause()
   }
