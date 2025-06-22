@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as THREE from "three"
-import GUI from 'lil-gui';
+// import GUI from 'lil-gui';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { DRACOLoader, GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import Stats from "three/examples/jsm/libs/stats.module.js";
@@ -34,7 +34,7 @@ const POSITIONS = {
 }
 
 // debug
-const gui = new GUI();
+// const gui = new GUI();
 const stats = new Stats()
 
 /**
@@ -82,8 +82,8 @@ function loadModel(url: string): Promise<THREE.Group> {
     gltfLoader.load(url, (gltf) => {
       resolve(gltf.scene)
     },
-      (xhl) => {
-        const percentage = (xhl.loaded / xhl.total * 100).toFixed(0)
+      (_xhl) => {
+        // const percentage = (xhl.loaded / xhl.total * 100).toFixed(0)
         // console.log(`Loading: ${percentage}%`)
       },
       (err) => reject(err)
@@ -265,35 +265,35 @@ function setupControls(camera: THREE.PerspectiveCamera) {
 // Jump
 const jump = ref(false)
 
-function animateCameraToCloseUp(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
+// function animateCameraToCloseUp(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
 
 
-  // Animate to close-up view
-  gsap.to(camera.position, {
-    x: POSITIONS.CAMERA.x,
-    y: POSITIONS.CAMERA.y,
-    z: POSITIONS.CAMERA.z,
-    duration: 5, // seconds
-    ease: "power2.inOut",
-    // onUpdate: () => {
-    //   // Keep the camera looking at the castle (or desired target)
-    //   camera.lookAt(new THREE.Vector3(0, 0, 0));
-    //   controls.update(); // Required if using OrbitControls
-    // },
-    // onComplete: () => {
-    //   console.log("Camera animation complete");
-    //   // Optional: Disable controls during close-up
-    //   controls.enabled = false;
-    // }
-  })
-  gsap.to(controls.target, {
-    z: -20,
-    duration: 5, // seconds
-    ease: "power2.inOut",
-  });
+//   // Animate to close-up view
+//   gsap.to(camera.position, {
+//     x: POSITIONS.CAMERA.x,
+//     y: POSITIONS.CAMERA.y,
+//     z: POSITIONS.CAMERA.z,
+//     duration: 5, // seconds
+//     ease: "power2.inOut",
+//     // onUpdate: () => {
+//     //   // Keep the camera looking at the castle (or desired target)
+//     //   camera.lookAt(new THREE.Vector3(0, 0, 0));
+//     //   controls.update(); // Required if using OrbitControls
+//     // },
+//     // onComplete: () => {
+//     //   console.log("Camera animation complete");
+//     //   // Optional: Disable controls during close-up
+//     //   controls.enabled = false;
+//     // }
+//   })
+//   gsap.to(controls.target, {
+//     z: -20,
+//     duration: 5, // seconds
+//     ease: "power2.inOut",
+//   });
 
 
-}
+// }
 
 function setupKeyboardControls(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
   const handleKeydown = (e: KeyboardEvent) => {
@@ -491,8 +491,8 @@ function tick(
 
   let previousTime = 0
   const walkingSpeed = 20; // Adjust as needed
-  const stepHeight = 0.05; // How high the feet lift
-  const stepLength = 0.03; // How far forward/back feet mo
+  // const stepHeight = 0.05; // How high the feet lift
+  // const stepLength = 0.03; // How far forward/back feet mo
 
 
 
@@ -766,7 +766,7 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
 
 
-  const [doorLeftNobModelData, doorRightModelData, castle, room, fakeTree, mouse] = await Promise.all([
+  const [doorLeftNobModelData, doorRightModelData, castle, room, _fakeTree, mouse] = await Promise.all([
     loadModel('/model/left-door-nob/door.gltf'),
     loadModel('/model/right-door-nob/door.gltf'),
     loadModel('/model/castle/castle.gltf'),
