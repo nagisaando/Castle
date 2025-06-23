@@ -18,9 +18,10 @@ const SIZES = {
   FLOOR: { width: 2.5, height: 6 },
   MOUSE: 0.2
 }
-
-const SPEED = 3.5
-
+const initialSpeed = 3.5
+let SPEED = initialSpeed
+const BASE_SPEED = initialSpeed
+let speedMultiplier = 1.0;
 
 const POSITIONS = {
   DOOR_X_OFFSET: SIZES.FLOOR.width / 3,
@@ -152,7 +153,7 @@ type RoomGroup = {
     door2: Door,
     door3: Door,
   },
-  RoomModel: THREE.Group,
+  roomModel: THREE.Group,
   hide: boolean
 }
 const rooms = ref<RoomGroup[]>(new Array(6))
@@ -166,7 +167,7 @@ const lastRoomIndex = ref(-1)
 
 
 const lastRoomPosition = computed(() => {
-  return rooms.value[lastRoomIndex.value]?.RoomModel.position.z ?? 0
+  return rooms.value[lastRoomIndex.value]?.roomModel.position.z ?? 0
 })
 
 
@@ -178,12 +179,18 @@ function getNextRoomPosition() {
 let doorLeftNobModel: THREE.Group;
 let doorRightNobModel: THREE.Group;
 
-function createRoom() {
+function createRoom(index: number) {
   const room = roomModel.clone()
   const door1 = doorLeftNobModel.clone()
   const door2 = doorLeftNobModel.clone()
   const door3 = doorRightNobModel.clone()
 
+  if (index !== 0) {
+    room.visible = false
+    door1.visible = false
+    door2.visible = false
+    door3.visible = false
+  }
 
   const zPosition = getNextRoomPosition()
 
@@ -229,7 +236,7 @@ function createRoom() {
       },
     },
     hide: false,
-    RoomModel: room
+    roomModel: room
   }
 
   // Randomly open one door
@@ -246,7 +253,7 @@ function createRoom() {
 function initRooms() {
   // for (let i = 0; i < rooms.value.length - 1; i++) {
   for (let i = 0; i < rooms.value.length; i++) {
-    createRoom()
+    createRoom(i)
   }
 }
 
@@ -255,9 +262,9 @@ function initRooms() {
 function setupControls(camera: THREE.PerspectiveCamera) {
   const controls = new OrbitControls(camera, canvas.value)
   controls.enableDamping = true
-  controls.enableZoom = false;    // Disable zoom
-  controls.enablePan = false;     // Disable pan
-  controls.enableRotate = false;  // Disable manual rotation
+  // controls.enableZoom = false;    // Disable zoom
+  // controls.enablePan = false;     // Disable pan
+  // controls.enableRotate = false;  // Disable manual rotation
   return controls
 }
 
@@ -276,16 +283,6 @@ function animateCameraToCloseUp(controls: OrbitControls, camera: THREE.Perspecti
     x: POSITIONS.CAMERA.x,
     duration: 5, // seconds
     ease: "power2.inOut",
-    // onUpdate: () => {
-    //   // Keep the camera looking at the castle (or desired target)
-    //   camera.lookAt(new THREE.Vector3(0, 0, 0));
-    //   controls.update(); // Required if using OrbitControls
-    // },
-    // onComplete: () => {
-    //   console.log("Camera animation complete");
-    //   // Optional: Disable controls during close-up
-    //   controls.enabled = false;
-    // }
   })
   gsap.to(controls.target, {
     z: -3,
@@ -355,6 +352,7 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
 
   const handleJump = () => {
     jump.value = true
+    const jumpSpeedFactor = 1 / speedMultiplier
 
     const currentRightFootY = mouseRightBackFoot.position.y;
     const currentLeftFootRotationX = mouseLeftBackFoot.rotation.x;
@@ -364,57 +362,62 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
     const currentTailPositionY = mouseTail.position.y
 
     const sound = jumpSounds[currentJumpSoundIndex]
+    sound.playbackRate = sound.playbackRate >= 2 ? 2 : speedMultiplier
     currentJumpSoundIndex = (currentJumpSoundIndex + 1) % MAX_SOUND_POOL;
     sound.currentTime = 0
     sound.play()
+
+    const mouseModelPartSpeed = 0.2 * jumpSpeedFactor || 0.03
+
     gsap.to(
       mouseModel.position, {
       y: 0.2,
-      duration: 0.5,
+      duration: 0.5 * jumpSpeedFactor || 0.1,
       ease: "power1.out",
       onComplete: () => {
         gsap.to(mouseModel.position, {
           y: 0, // Return to original height
-          duration: 0.25,
+          duration: 0.25 * jumpSpeedFactor || 0.05,
           ease: "bounce.out",
           onComplete: () => {
             jump.value = false
           },
         });
+
         gsap.to(
           mouseLeftBackFoot.rotation, {
           x: currentLeftFootRotationX,
-          duration: 0.2,
+          duration: mouseModelPartSpeed,
           ease: "power1.inOut",
         })
         gsap.to(
           mouseRightBackFoot.rotation, {
           x: currentRightFootRotationX,
-          duration: 0.2,
+          duration: mouseModelPartSpeed,
           ease: "power1.inOut",
         })
         gsap.to(
           mouseRightBackFoot.position, {
           y: currentRightFootY,
-          duration: 0.2,
+          duration: mouseModelPartSpeed,
           ease: "power1.inOut",
         })
         gsap.to(
           mouseBody.rotation, {
           x: currentBodyRotationX,
-          duration: 0.2,
+          duration: mouseModelPartSpeed,
           ease: "power1.inOut",
         })
         gsap.to(
           mouseTail.rotation, {
           y: currentTailRotationY,
-          duration: 0.2,
+          duration: mouseModelPartSpeed,
           ease: "power1.inOut",
         })
         gsap.to(
           mouseTail.position, {
           y: currentTailPositionY,
-          duration: 0.2,
+          duration: mouseModelPartSpeed,
           ease: "power1.out",
         })
 
@@ -425,14 +428,14 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
     gsap.to(
       mouseLeftBackFoot.rotation, {
       x: `-=${Math.PI / 2}`,
-      duration: 0.2,
+      duration: mouseModelPartSpeed,
       ease: "power1.out",
     })
 
     gsap.to(
       mouseRightBackFoot.rotation, {
       x: `-=${Math.PI / 2.4}`,
-      duration: 0.2,
+      duration: mouseModelPartSpeed,
       ease: "power1.out",
     })
 
@@ -440,28 +443,28 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
     gsap.to(
       mouseRightBackFoot.position, {
       y: `+=0.01`,
-      duration: 0.2,
+      duration: mouseModelPartSpeed,
       ease: "power1.out",
     })
 
     gsap.to(
       mouseBody.rotation, {
       x: -0.4,
-      duration: 0.2,
+      duration: mouseModelPartSpeed,
       ease: "power1.out",
     })
 
     gsap.to(
       mouseTail.rotation, {
       y: -0.1,
-      duration: 0.2,
+      duration: mouseModelPartSpeed,
       ease: "power1.out",
     })
 
     gsap.to(
       mouseTail.position, {
       y: `+=0.1`,
-      duration: 0.2,
+      duration: mouseModelPartSpeed,
       ease: "power1.out",
     })
 
@@ -473,24 +476,26 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
   }
 
   const mouseMove = (x: number) => {
+    const moveDuration = 0.2 / speedMultiplier || 0.05;
     gsap.to(mouseModel.position, {
-      duration: 0.2,
+      duration: moveDuration,
       ease: "power2.out",
       x,
       onStart: () => {
         const sound = moveSounds[currentMoveSoundIndex]
         currentMoveSoundIndex = (currentMoveSoundIndex + 1) % MAX_SOUND_POOL;
         sound.currentTime = 0
+        sound.playbackRate = sound.playbackRate >= 2 ? 2 : speedMultiplier
         sound.play()
       }
     });
     gsap.to(controls.target, {
-      duration: 0.2,
+      duration: moveDuration,
       ease: "power2.out",
       x,
     });
     gsap.to(camera.position, {
-      duration: 0.2,
+      duration: moveDuration,
       ease: "power2.out",
       x,
     });
@@ -520,6 +525,10 @@ function tick(
   const stepLength = 0.03; // How far forward/back feet mo
 
 
+  const SPEED_INCREASE_INTERVAL = 3; // seconds
+  const SPEED_INCREMENT = 0.5;
+  let speedIncreaseTimer = 0;
+
 
   const animate = () => {
 
@@ -536,16 +545,28 @@ function tick(
       updateRoom(deltaTime)
       updateDistance(deltaTime)
       if (!jump.value) {
-        mouseLeftBackFoot.position.z = initialBackFootPositionZ + Math.sin(elapsedTime * walkingSpeed) * 0.1
-        mouseLeftBackFoot.rotation.x = Math.sin(elapsedTime * walkingSpeed) * 0.2;
-        mouseRightBackFoot.position.z = initialBackFootPositionZ + Math.sin((elapsedTime) * walkingSpeed + Math.PI) * 0.1
-        mouseRightBackFoot.rotation.x = Math.sin(elapsedTime * walkingSpeed) * 0.2;
-        const bodyMovement = Math.sin(elapsedTime * walkingSpeed) * 0.005
+        const walkingAnimationSpeed = walkingSpeed * speedMultiplier >= 50 ? 50 : walkingSpeed * speedMultiplier;
+
+        mouseLeftBackFoot.position.z = initialBackFootPositionZ + Math.sin(elapsedTime * walkingAnimationSpeed) * 0.1
+        mouseLeftBackFoot.rotation.x = Math.sin(elapsedTime * walkingAnimationSpeed) * 0.2;
+        mouseRightBackFoot.position.z = initialBackFootPositionZ + Math.sin((elapsedTime) * walkingAnimationSpeed + Math.PI) * 0.1
+        mouseRightBackFoot.rotation.x = Math.sin(elapsedTime * walkingAnimationSpeed) * 0.2;
+        const bodyMovement = Math.sin(elapsedTime * walkingAnimationSpeed) * 0.005
         mouseBody.position.y = mouseBodyPositionY + bodyMovement
         mouseTail.position.y = mouseTailPositionY + bodyMovement
 
       }
 
+
+      speedIncreaseTimer += deltaTime;
+      if (speedIncreaseTimer >= SPEED_INCREASE_INTERVAL) {
+        speedMultiplier = speedMultiplier >= 5 ? 5 : speedMultiplier + 0.1
+        SPEED = BASE_SPEED * speedMultiplier;
+        if (speedMultiplier < 5) {
+          speedIncreaseTimer = 0
+        }
+        gameBackground.playbackRate = gameBackground.playbackRate >= 2 ? 2 : 1 + (speedMultiplier * 0.005)
+      }
 
 
     }
@@ -571,7 +592,7 @@ function tick(
 
 function updateRoom(deltaTime: number) {
   rooms.value.forEach((room) => {
-    room.RoomModel.position.z += SPEED * deltaTime
+    room.roomModel.position.z += SPEED * deltaTime
     room.doors.door1.obj.position.z += SPEED * deltaTime
     room.doors.door2.obj.position.z += SPEED * deltaTime
     room.doors.door3.obj.position.z += SPEED * deltaTime
@@ -600,7 +621,7 @@ function recycleRoom() {
 
   // Recycle the oldest room
   const roomToRecycle = rooms.value[roomRecycleIndex.value];
-  roomToRecycle.RoomModel.position.z = lastRoomPosition;
+  roomToRecycle.roomModel.position.z = lastRoomPosition;
 
   roomToRecycle.doors.door1.obj.position.z = lastRoomPosition + 0.03
   roomToRecycle.doors.door1.obj.position.x = -POSITIONS.DOOR_X_OFFSET
@@ -643,7 +664,7 @@ function resetRoomGroup(roomGroup: RoomGroup) {
 }
 
 
-
+const showGameOverMessage = ref(false)
 function checkDoorCollisions(door: DoorGroup) {
   if (Math.abs(door.door1.obj.position.z - mouseModel.position.z) < 1) {
     const doorsToCheck = [door.door1, door.door2, door.door3]
@@ -652,6 +673,7 @@ function checkDoorCollisions(door: DoorGroup) {
     mouseModelBoundingBox.setFromObject(mouseModel)
     if (doorsToCheck.some(door => mouseModelBoundingBox.intersectsBox(door.boundingBox))) {
       gameOver.value = true
+      showGameOverMessage.value = true
     }
   }
 }
@@ -662,7 +684,7 @@ function handleDoorOpening(door: DoorGroup) {
       doorPart.opened = true
       gsap.to(doorPart.obj.position, {
         x: `+=${xOffset}`,
-        duration: 0.2,
+        duration: 0.2 / speedMultiplier || 0.05,
         ease: "power2.out",
       })
 
@@ -707,7 +729,10 @@ floorARMTexture.wrapT = THREE.RepeatWrapping
 floorNormalTexture.wrapS = THREE.RepeatWrapping
 floorNormalTexture.wrapT = THREE.RepeatWrapping
 
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80),
+let floor: THREE.Mesh<
+  THREE.PlaneGeometry,
+  THREE.MeshStandardMaterial | THREE.MeshBasicMaterial
+> = new THREE.Mesh(new THREE.PlaneGeometry(80, 80),
   new THREE.MeshStandardMaterial({
     alphaMap: alphaTexture,
     transparent: true,
@@ -735,6 +760,8 @@ let controls: OrbitControls
 
 const showButton = ref(true)
 function startGame() {
+  if (!showButton.value) return
+
   showButton.value = false
   animateCameraToCloseUp(controls, camera)
 
@@ -759,8 +786,17 @@ function startGame() {
     delay: 3
   })
   setTimeout(() => {
+    rooms.value.forEach((room, i) => {
+      if (i !== 0) {
+        // since we were hiding the rest of the room from the castle view
+        // we will show them right before game starts
+        room.roomModel.visible = true
+        room.doors.door1.obj.visible = true
+        room.doors.door2.obj.visible = true
+        room.doors.door3.obj.visible = true
+      }
+    })
     gameStart.value = true
-    backgroundBeforeGameStart.pause()
     gameBackground.currentTime = 0
     gameBackground.play()
     return
@@ -868,6 +904,7 @@ onMounted(async () => {
   initMouse()
 
 
+
   castleModel = castle
   scene.add(castleModel)
 
@@ -931,23 +968,133 @@ gameBackground.volume = 0.4
 gameBackground.loop = true
 
 
-const backgroundBeforeGameStart = new Audio('/sound/Blastwave_FX_ForestNight_BW.1759.mp3')
-backgroundBeforeGameStart.loop = true
-backgroundBeforeGameStart.volume = 0.3
 watchEffect(() => {
   if (gameStart.value) {
-    // castleModel.visible = false
-
     cleanUpSceneWhenGameStarts()
-
+    removeFloorTexture()
   }
   if (gameStart.value && gameOver.value) {
     gameBackground.pause()
   }
 })
 
+function moveRoomsToStartPlace(): Promise<void> {
+  return new Promise((resolve) => {
+    const initialRoomPosition = -2.5
+    const firstRoomIndex = roomRecycleIndex.value
+    const firstRoom = rooms.value[roomRecycleIndex.value];
+    distance.value = 0
+    const distanceToMove = firstRoom.roomModel.position.z - initialRoomPosition
+
+    let tl = gsap.timeline({
+      onComplete: () => resolve()
+    });
+    tl.add('reset')
+
+    tl.to(mouseModel.position, {
+      x: 0,
+      y: 0,
+      duration: 3,
+    }, 'reset')
+    tl.to(controls.target, {
+      x: 0,
+      duration: 3,
+    }, 'reset')
+    tl.to(camera.position, {
+      x: 0,
+      duration: 3,
+    }, 'reset')
+
+    rooms.value.forEach((room, index) => {
+      tl.to(room.roomModel.position, {
+        z: `-=${distanceToMove}`,
+        duration: 3,
+      }, 'reset')
 
 
+      const roomPosition = room.roomModel.position.z - distanceToMove
+      tl.to(room.doors.door1.obj.position, {
+        z: roomPosition + 0.03,
+        x: -POSITIONS.DOOR_X_OFFSET,
+        duration: 3,
+      }, 'reset')
+
+        .to(room.doors.door2.obj.position, {
+          z: roomPosition - 0.02,
+          x: 0,
+          duration: 3,
+        }, 'reset')
+
+        .to(room.doors.door3.obj.position, {
+          z: roomPosition + 0.03,
+          x: POSITIONS.DOOR_X_OFFSET,
+          duration: 3,
+        }, 'reset')
+
+      if (index === firstRoomIndex) {
+        resetRoomGroup(room)
+      }
+    })
+  })
+
+
+
+
+
+
+}
+
+function removeFloorTexture() {
+  floor.material.alphaMap?.dispose()
+  floor.material.alphaMap = null
+
+  floor.material.map?.dispose()
+  floor.material.map = null
+
+  floor.material.aoMap?.dispose()
+  floor.material.aoMap = null
+
+  // Type guard for MeshStandardMaterial
+  if ('roughnessMap' in floor.material) {
+    // TypeScript now knows this is MeshStandardMaterial
+    floor.material.roughnessMap?.dispose()
+    floor.material.roughnessMap = null
+
+    floor.material.metalnessMap?.dispose()
+    floor.material.metalnessMap = null
+
+    floor.material.normalMap?.dispose()
+    floor.material.normalMap = null
+  }
+
+
+  floorARMTexture.dispose()
+  floorNormalTexture.dispose()
+  floorColorTexture.dispose()
+  alphaTexture.dispose()
+
+  floor.material.dispose()
+  floor.geometry.dispose()
+
+  floor.material = new THREE.MeshBasicMaterial({
+    color: '#787464',
+  })
+
+  floor.material.needsUpdate = true
+}
+
+async function restartGame() {
+  showGameOverMessage.value = false
+  await moveRoomsToStartPlace()
+  gameBackground.currentTime = 0
+  SPEED = initialSpeed
+  speedMultiplier = 1.0
+  gameOver.value = false
+  gameBackground.playbackRate = 1.0
+  gameBackground.play()
+  gameStart.value = true
+
+}
 </script>
 
 <template>
@@ -955,20 +1102,49 @@ watchEffect(() => {
   <canvas class="webgl" ref="canvas">
 
   </canvas>
-  <button v-if="showButton" @click="startGame">Game Start</button>
-  <p>Distance: {{ Math.floor(distance) }}</p>
+  <button v-if="showButton" @click="startGame" class="game-start">Game Start</button>
+  <p class="distance">Distance: {{ Math.floor(distance) }}</p>
+  <div v-if="showGameOverMessage" class="game-over">
+    <p>Game over...</p>
+    <button @click="restartGame">try again</button>
+  </div>
 </template>
 
 <style>
 button {
+  font-size: 2rem;
+  border: 2px white solid;
+}
+
+button.game-start {
   position: absolute;
-  font-size: 3rem;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
 }
 
-p {
+.game-over {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  p {
+
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+    color: black;
+    font-weight: 500;
+
+
+  }
+
+  button {
+    text-wrap: nowrap;
+  }
+}
+
+p.distance {
   position: absolute;
   font-size: 2rem;
   right: 2rem;
