@@ -362,7 +362,7 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
     const currentTailPositionY = mouseTail.position.y
 
     const sound = jumpSounds[currentJumpSoundIndex]
-    sound.playbackRate = sound.playbackRate >= 2 ? 2 : speedMultiplier
+    sound.playbackRate = sound.playbackRate >= 2 ? 2 : 1 + (speedMultiplier * 0.005)
     currentJumpSoundIndex = (currentJumpSoundIndex + 1) % MAX_SOUND_POOL;
     sound.currentTime = 0
     sound.play()
@@ -485,7 +485,7 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
         const sound = moveSounds[currentMoveSoundIndex]
         currentMoveSoundIndex = (currentMoveSoundIndex + 1) % MAX_SOUND_POOL;
         sound.currentTime = 0
-        sound.playbackRate = sound.playbackRate >= 2 ? 2 : speedMultiplier
+        sound.playbackRate = sound.playbackRate >= 2 ? 2 : 1 + (speedMultiplier * 0.005)
         sound.play()
       }
     });

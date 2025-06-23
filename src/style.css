@@ -47,11 +47,12 @@ button {
   font-family: inherit;
   cursor: pointer;
   background-color: transparent;
-  transition: border-color 0.25s;
+  transition: opacity 0.25s;
   border-width: 2px;
+  opacity: 1;
 }
 button:hover {
-  border-color: #646cff;
+  opacity: 0.8;
 }
 button:focus,
 button:focus-visible {
