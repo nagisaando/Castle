@@ -30,7 +30,8 @@ const POSITIONS = {
   MOUSE_START_Z: 4,
   MOUSE_X: 0.8,
   CAMERA: { z: 8, y: 1.25, x: 0 },
-  CAMERA_TO_START: { z: 60, y: 60, x: 60 }
+  CAMERA_TO_START: { z: 55, y: 40, x: 30 }
+  // CAMERA_TO_START: { z: 60, y: 60, x: 60 }
   // CAMERA_TO_START: { z: 8, y: 1.25, x: 0 },
 }
 
@@ -108,10 +109,10 @@ tatamiColorTexture.colorSpace = THREE.SRGBColorSpace
 /**
  * Lights
  */
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.2)
+const ambientLight = new THREE.AmbientLight(0xbda8a8, 1.2)
 scene.add(ambientLight)
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 3)
+const directionalLight = new THREE.DirectionalLight(0xbda8a8, 3)
 directionalLight.position.set(1, 0, 1)
 const directonalLightHelper = new THREE.DirectionalLightHelper(directionalLight)
 scene.add(directionalLight)
@@ -863,16 +864,13 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
 
 
-  const [doorLeftNobModelData, doorRightModelData, castle, room, fakeTree, mouse, leftOutsideDoor, rightOutsideDoor] = await Promise.all([
+  const [doorLeftNobModelData, doorRightModelData, castle, room, fakeTree, mouse] = await Promise.all([
     loadModel('/model/left-door-nob/door.gltf'),
     loadModel('/model/right-door-nob/door.gltf'),
     loadModel('/model/castle/castle.gltf'),
     loadModel('/model/interior/interior.gltf'),
     loadModel('/model/tree-fake/tree-fake.gltf'),
     loadModel('/model/mouse/mouse.gltf'),
-    loadModel('/model/left-outside-door/left-outside-door.gltf'),
-    loadModel('/model/right-outside-door/right-outside-door.gltf')
-
   ])
 
 
