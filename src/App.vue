@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import * as THREE from "three"
-import GUI from 'lil-gui';
 import { computed, onMounted, ref, useTemplateRef, watch, watchEffect } from 'vue'
 import { DRACOLoader, GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import Stats from "three/examples/jsm/libs/stats.module.js";
@@ -9,10 +8,14 @@ import gsap from "gsap";
 
 // TODO
 // 1. Clean up
-// 2. Restart game
-// 3. count door
+// 2. Restart game [DONE]
+// 3. count door [DONE]
 // 4. Sphere not copying in the beginning [DONE]
-// 5. Speed really slow
+// 5. Speed really slow [DONE]
+// 6. object
+// 7. ending cat
+
+// instead of adding shuriken everytime, let's put 1 shuriken per room and toggle visibility instead 
 
 const SIZES = {
   FLOOR: { width: 2.5, height: 6 },
@@ -30,9 +33,9 @@ const POSITIONS = {
   MOUSE_START_Z: 4,
   MOUSE_X: 0.8,
   CAMERA: { z: 8, y: 1.25, x: 0 },
-  CAMERA_TO_START: { z: 55, y: 40, x: 30 }
+  // CAMERA_TO_START: { z: 55, y: 40, x: 30 }
   // CAMERA_TO_START: { z: 60, y: 60, x: 60 }
-  // CAMERA_TO_START: { z: 8, y: 1.25, x: 0 },
+  CAMERA_TO_START: { z: 8, y: 1.25, x: 0 },
 }
 
 // debug
@@ -114,9 +117,7 @@ scene.add(ambientLight)
 
 const directionalLight = new THREE.DirectionalLight(0xbda8a8, 3)
 directionalLight.position.set(1, 0, 1)
-const directonalLightHelper = new THREE.DirectionalLightHelper(directionalLight)
 scene.add(directionalLight)
-scene.add(directonalLightHelper)
 
 
 // Mouse
@@ -130,12 +131,13 @@ let mouseBody: THREE.Object3D
 let mouseBodyPositionY: number
 let mouseTail: THREE.Object3D
 let mouseTailPositionY: number
+let debugSphere: THREE.Mesh
 
 // const mouse = new THREE.Mesh(
 //   new THREE.SphereGeometry(SIZES.MOUSE), new THREE.MeshBasicMaterial()
 // )
 
-// const mouseBoundSphere = new THREE.Sphere(mouse.position, SIZES.MOUSE * 1.25)
+let mouseBoundingSphere: THREE.Sphere
 
 // mouse.position.set(0, POSITIONS.MOUSE_Y, POSITIONS.MOUSE_START_Z)
 // scene.add(mouse)
@@ -143,8 +145,56 @@ let mouseTailPositionY: number
 function initMouse() {
   mouseModel.position.set(0, POSITIONS.MOUSE_Y, POSITIONS.MOUSE_START_Z)
   scene.add(mouseModel)
+
+  // Calculate body size
+  const bodySize = new THREE.Box3().setFromObject(mouseBody).getSize(new THREE.Vector3());
+  const sphereRadius = Math.max(bodySize.x, bodySize.y, bodySize.z) * 0.5 * 0.8; // 80% of half the largest dimension
+
+
+  // In 3D modeling, child objects (mouse body) often have local positions relative to their parent
+  // to create the bounding sphere with the child object, I have to give a world coordinate to the mouse body object
+  // so that it can properly update the bounding sphere
+
+
+  // Get world position of the body
+  mouseModel.updateMatrixWorld() // Ensure transforms are up-to-date
+  const bodyWorldPosition = new THREE.Vector3()
+  mouseBody.getWorldPosition(bodyWorldPosition)
+
+  mouseBoundingSphere = new THREE.Sphere(bodyWorldPosition, sphereRadius);
+
+
+
+  // we can remove this later, this is just visualize sphere 
+  const debugSphereGeometry = new THREE.SphereGeometry(1, 16, 16);
+  const debugSphereMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffff00,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.5
+  });
+  debugSphere = new THREE.Mesh(debugSphereGeometry, debugSphereMaterial);
+  debugSphere.position.copy(mouseBoundingSphere.center);
+  debugSphere.scale.setScalar(mouseBoundingSphere.radius);
+  scene.add(debugSphere);
 }
 
+function updateMouseBoundingSphere() {
+  // 1. Update all world matrices in the hierarchy
+  //    - mouseBody's world position depends on parent (mouseModel) transforms
+  //    - Three.js doesn't auto-update world matrices until render time
+  // Without this, we'd use stale positions for collision detection
+  mouseModel.updateMatrixWorld()
+
+  // 2. Update collision sphere to match current world position:
+  //    - getWorldPosition() accounts for ALL parent transforms
+  //    - mouseBoundingSphere.center will now match visual position
+  mouseBody.getWorldPosition(mouseBoundingSphere.center)
+
+  // Debug visualization (optional)
+  debugSphere.position.copy(mouseBoundingSphere.center)
+  debugSphere.scale.setScalar(mouseBoundingSphere.radius)
+}
 
 
 
@@ -155,7 +205,13 @@ type RoomGroup = {
     door3: Door,
   },
   roomModel: THREE.Group,
-  hide: boolean
+  hide: boolean,
+  shuriken: {
+    obj: THREE.Mesh,
+    boundingBox: THREE.Box3,
+    show: boolean
+  }
+
 }
 const rooms = ref<RoomGroup[]>(new Array(6))
 
@@ -186,11 +242,17 @@ function createRoom(index: number) {
   const door2 = doorLeftNobModel.clone()
   const door3 = doorRightNobModel.clone()
 
+  const shuriken = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.1), new THREE.MeshBasicMaterial({}))
+
+
+
+
   if (index !== 0) {
     room.visible = false
     door1.visible = false
     door2.visible = false
     door3.visible = false
+    shuriken.visible = false
   }
 
   const zPosition = getNextRoomPosition()
@@ -209,10 +271,12 @@ function createRoom(index: number) {
   door3!.position.z = zPosition + 0.03
   door3!.position.x = POSITIONS.DOOR_X_OFFSET
 
+
   scene.add(room)
   scene.add(door1)
   scene.add(door2)
   scene.add(door3)
+  scene.add(shuriken)
 
   const roomGroup: RoomGroup = {
     doors: {
@@ -236,14 +300,32 @@ function createRoom(index: number) {
         opened: false
       },
     },
+    shuriken: {
+      obj: shuriken,
+      boundingBox: new THREE.Box3(),
+      show: false
+    },
     hide: false,
-    roomModel: room
+    roomModel: room,
   }
 
   // Randomly open one door
   const doorsToOpen = ['door1', 'door2', 'door3'] as const
   const randomDoor = doorsToOpen[Math.floor(Math.random() * 3)]
   roomGroup.doors[randomDoor].open = true
+
+  // place the shuriken behind the door to open
+
+  shuriken.position.y = 0.1
+  shuriken.position.z = roomGroup.doors[randomDoor].obj.position.z + 0.2
+  shuriken.position.x = roomGroup.doors[randomDoor].obj.position.x
+
+
+
+  // Add a shuriken in about 1 out of 4 rooms (25% chance)
+  if (Math.random() < 0.25) {
+    roomGroup.shuriken.show = true
+  }
 
   // Update ring buffer
   rooms.value[roomRecycleIndex.value] = roomGroup
@@ -593,15 +675,20 @@ function tick(
 
 function updateRoom(deltaTime: number) {
   rooms.value.forEach((room) => {
-    room.roomModel.position.z += SPEED * deltaTime
-    room.doors.door1.obj.position.z += SPEED * deltaTime
-    room.doors.door2.obj.position.z += SPEED * deltaTime
-    room.doors.door3.obj.position.z += SPEED * deltaTime
-    // check collisions
-    checkDoorCollisions(room.doors)
+    const speed = SPEED * deltaTime
+    room.roomModel.position.z += speed
+    room.doors.door1.obj.position.z += speed
+    room.doors.door2.obj.position.z += speed
+    room.doors.door3.obj.position.z += speed
+    room.shuriken.obj.position.z += speed
+
 
     // Handle door opening animation
     handleDoorOpening(room.doors)
+
+    // check collisions
+    checkCollisions(room)
+
 
     // Handle door fading 
     if (!room.hide && room.doors.door2.obj.position.z > 5) {
@@ -622,6 +709,8 @@ function recycleRoom() {
 
   // Recycle the oldest room
   const roomToRecycle = rooms.value[roomRecycleIndex.value];
+
+
   roomToRecycle.roomModel.position.z = lastRoomPosition;
 
   roomToRecycle.doors.door1.obj.position.z = lastRoomPosition + 0.03
@@ -633,7 +722,10 @@ function recycleRoom() {
   roomToRecycle.doors.door3.obj.position.z = lastRoomPosition + 0.03
   roomToRecycle.doors.door3.obj.position.x = POSITIONS.DOOR_X_OFFSET
 
-  resetRoomGroup(roomToRecycle)
+
+  // we are updating the position of shriken based on the updated door place so we need to place after the positioning door 
+  // we probably need to refactor this
+  resetRoomGroup(roomToRecycle,)
 
   // Update recycle indices
   lastRoomIndex.value = roomRecycleIndex.value
@@ -656,23 +748,55 @@ function resetRoomGroup(roomGroup: RoomGroup) {
   roomGroup.doors.door3.obj.visible = true;
 
 
+
   // Randomly open one door
   const doorsToOpen = ['door1', 'door2', 'door3'] as const
   const randomDoor = doorsToOpen[Math.floor(Math.random() * 3)]
   roomGroup.doors[randomDoor].open = true
+
+  // reset shuriken
+  const randomDoorOffset = roomGroup.roomModel.position.z + (roomGroup.doors.door2.open ? - 0.02 : + 0.03)
+  roomGroup.shuriken.obj.position.z = randomDoorOffset + 0.2
+  let randomDoorXPosition = 0 // default is second door x position
+  if (roomGroup.doors.door1.open) {
+    randomDoorXPosition = -POSITIONS.DOOR_X_OFFSET
+  } else if (roomGroup.doors.door3.open) {
+    randomDoorXPosition = POSITIONS.DOOR_X_OFFSET
+  }
+
+  roomGroup.shuriken.obj.position.x = randomDoorXPosition
+
+  // Add a shuriken in about 1 out of 4 rooms (25% chance)
+  if (Math.random() < 0.25) {
+    roomGroup.shuriken.show = true
+    roomGroup.shuriken.obj.visible = true
+  } else {
+    roomGroup.shuriken.show = false
+    roomGroup.shuriken.obj.visible = false
+  }
 
   roomGroup.hide = false
 }
 
 
 const showGameOverMessage = ref(false)
-function checkDoorCollisions(door: DoorGroup) {
-  if (Math.abs(door.door1.obj.position.z - mouseModel.position.z) < 1) {
-    const doorsToCheck = [door.door1, door.door2, door.door3]
-    // update bounding floors 
-    doorsToCheck.forEach(door => door.boundingBox.setFromObject(door.obj))
+function checkCollisions(room: RoomGroup) {
+  if (Math.abs(room.doors.door1.obj.position.z - mouseModel.position.z) < 1) {
+    const doorsToCheck = [room.doors.door1, room.doors.door2, room.doors.door3]
+
+    updateMouseBoundingSphere()
+    const boundingBoxes = doorsToCheck.map(door => {
+      door.boundingBox.setFromObject(door.obj)
+      return door.boundingBox
+    })
+    room.shuriken.boundingBox.setFromObject(room.shuriken.obj)
+    if (room.shuriken.show) {
+      boundingBoxes.push(room.shuriken.boundingBox)
+    }
+
     mouseModelBoundingBox.setFromObject(mouseModel)
-    if (doorsToCheck.some(door => mouseModelBoundingBox.intersectsBox(door.boundingBox))) {
+
+    if (boundingBoxes.some(boundBox => mouseBoundingSphere.intersectsBox(boundBox))) {
       gameOver.value = true
       showGameOverMessage.value = true
     }
@@ -681,6 +805,7 @@ function checkDoorCollisions(door: DoorGroup) {
 
 function handleDoorOpening(door: DoorGroup) {
   const openDoor = (doorPart: Door, xOffset: number) => {
+
     if (!doorPart.opened && doorPart.open && doorPart.obj.position.z > -1) {
       doorPart.opened = true
       gsap.to(doorPart.obj.position, {
@@ -693,9 +818,11 @@ function handleDoorOpening(door: DoorGroup) {
     }
   }
 
+
   openDoor(door.door1, POSITIONS.DOOR_X_OFFSET)
   openDoor(door.door2, POSITIONS.DOOR_X_OFFSET)
   openDoor(door.door3, -POSITIONS.DOOR_X_OFFSET)
+
 }
 
 function fadeDoors(room: RoomGroup) {
@@ -795,6 +922,8 @@ function startGame() {
         room.doors.door1.obj.visible = true
         room.doors.door2.obj.visible = true
         room.doors.door3.obj.visible = true
+        if (room.shuriken.show)
+          room.shuriken.obj.visible = true
       }
     })
     gameStart.value = true
@@ -885,6 +1014,7 @@ onMounted(async () => {
   mouseBody = mouseModel.getObjectByName('body') as THREE.Object3D
   mouseBodyPositionY = mouseBody.position.y
 
+
   mouseTail = mouseModel.getObjectByName('tail') as THREE.Object3D
   mouseTailPositionY = mouseTail.position.y
 
@@ -904,39 +1034,39 @@ onMounted(async () => {
 
 
   castleModel = castle
-  scene.add(castleModel)
+  // scene.add(castleModel)
 
   const minDist = 10; // Closest trees are 10 units away
   const maxDist = 70; // Farthest trees are 80 units away
   const exclusionZone = { x: [-5, 5], z: [0, 30] }; // No trees spawn here
-  for (let i = 0; i < 400; i++) {
-    const tree = fakeTree.clone();
-    let x, z;
-    let attempts = 0;
-    const maxAttempts = 10; // Safety net to prevent infinite loops
+  // for (let i = 0; i < 400; i++) {
+  //   const tree = fakeTree.clone();
+  //   let x, z;
+  //   let attempts = 0;
+  //   const maxAttempts = 10; // Safety net to prevent infinite loops
 
-    do {
-      // Random angle and distance within range
-      const angle = Math.random() * Math.PI * 2;
-      const distance = minDist + Math.random() * (maxDist - minDist);
+  //   do {
+  //     // Random angle and distance within range
+  //     const angle = Math.random() * Math.PI * 2;
+  //     const distance = minDist + Math.random() * (maxDist - minDist);
 
-      x = Math.cos(angle) * distance;
-      z = Math.sin(angle) * distance;
-      attempts++;
-    } while (
-      // Keep trying if inside exclusion zone
-      (x >= exclusionZone.x[0] && x <= exclusionZone.x[1] &&
-        z >= exclusionZone.z[0] && z <= exclusionZone.z[1]) &&
-      attempts < maxAttempts
-    );
+  //     x = Math.cos(angle) * distance;
+  //     z = Math.sin(angle) * distance;
+  //     attempts++;
+  //   } while (
+  //     // Keep trying if inside exclusion zone
+  //     (x >= exclusionZone.x[0] && x <= exclusionZone.x[1] &&
+  //       z >= exclusionZone.z[0] && z <= exclusionZone.z[1]) &&
+  //     attempts < maxAttempts
+  //   );
 
-    // Skip if too many attempts (optional)
-    if (attempts >= maxAttempts) continue;
+  //   // Skip if too many attempts (optional)
+  //   if (attempts >= maxAttempts) continue;
 
-    tree.position.set(x, 0, z);
-    scene.add(tree);
-    trees.push(tree)
-  }
+  //   tree.position.set(x, 0, z);
+  //   scene.add(tree);
+  //   trees.push(tree)
+  // }
 
 
   // Start game loop
@@ -1028,6 +1158,16 @@ function moveRoomsToStartPlace(): Promise<void> {
           x: POSITIONS.DOOR_X_OFFSET,
           duration: 3,
         }, 'reset')
+
+      let openDoorPosition: number = 0
+      if (room.doors.door1.open) openDoorPosition = roomPosition + 0.03;
+      else if (room.doors.door2.open) openDoorPosition = roomPosition - 0.02;
+      else if (room.doors.door3.open) openDoorPosition = roomPosition + 0.03;
+
+      tl.to(room.shuriken.obj.position, {
+        z: openDoorPosition + 0.2,
+        duration: 3,
+      }, 'reset')
 
       if (index === firstRoomIndex) {
         resetRoomGroup(room)
