@@ -403,7 +403,7 @@ for (let i = 0; i < MAX_SOUND_POOL; i++) {
 const doorSound = new Audio('/sound/zapsplat_foley_cupboard_closet_door_wooden_old_hinge_creak_squeak_very_short_slight_004_106659.mp3')
 doorSound.volume = 0.1
 
-function setupKeyboardControls(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
+function setupKeyboardControls() {
   const handleKeydown = (e: KeyboardEvent) => {
     if (e.target !== document.body) return
 
@@ -971,7 +971,7 @@ onMounted(async () => {
   // Controls
   controls = setupControls(camera)
 
-  setupKeyboardControls(controls, camera)
+  setupKeyboardControls()
 
   /**
    * Renderer
