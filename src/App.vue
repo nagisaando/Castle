@@ -348,9 +348,9 @@ function initRooms() {
 function setupControls(camera: THREE.PerspectiveCamera) {
   const controls = new OrbitControls(camera, canvas.value)
   controls.enableDamping = true
-  // controls.enableZoom = false;    // Disable zoom
-  // controls.enablePan = false;     // Disable pan
-  // controls.enableRotate = false;  // Disable manual rotation
+  controls.enableZoom = false;    // Disable zoom
+  controls.enablePan = false;     // Disable pan
+  controls.enableRotate = false;  // Disable manual rotation
   return controls
 }
 
@@ -429,168 +429,170 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
     // if (code === 'ArrowDown') handleDown()
   }
 
-  const handleLeftMovement = () => {
-    if (mouseModel.position.x === 0) mouseMove(-POSITIONS.MOUSE_X)
-    if (mouseModel.position.x === POSITIONS.MOUSE_X) mouseMove(0)
-  }
 
-  const handleRightMovement = () => {
-    if (mouseModel.position.x === 0) mouseMove(POSITIONS.MOUSE_X)
-    if (mouseModel.position.x === -POSITIONS.MOUSE_X) mouseMove(0)
-  }
-
-  const handleJump = () => {
-    jump.value = true
-    const jumpSpeedFactor = 1 / speedMultiplier
-
-    const currentRightFootY = mouseRightBackFoot.position.y;
-    const currentLeftFootRotationX = mouseLeftBackFoot.rotation.x;
-    const currentRightFootRotationX = mouseRightBackFoot.rotation.x;
-    const currentBodyRotationX = mouseBody.rotation.x
-    const currentTailRotationY = mouseTail.rotation.y
-    const currentTailPositionY = mouseTail.position.y
-
-    const sound = jumpSounds[currentJumpSoundIndex]
-    sound.playbackRate = sound.playbackRate >= 2 ? 2 : 1 + (speedMultiplier * 0.005)
-    currentJumpSoundIndex = (currentJumpSoundIndex + 1) % MAX_SOUND_POOL;
-    sound.currentTime = 0
-    sound.play()
-
-    const mouseModelPartSpeed = 0.2 * jumpSpeedFactor || 0.03
-
-    gsap.to(
-      mouseModel.position, {
-      y: 0.23,
-      duration: 0.5 * jumpSpeedFactor || 0.1,
-      ease: "power1.out",
-      onComplete: () => {
-        gsap.to(mouseModel.position, {
-          y: 0, // Return to original height
-          duration: 0.25 * jumpSpeedFactor || 0.05,
-          ease: "bounce.out",
-          onComplete: () => {
-            jump.value = false
-          },
-        });
-
-        gsap.to(
-          mouseLeftBackFoot.rotation, {
-          x: currentLeftFootRotationX,
-          duration: mouseModelPartSpeed,
-          ease: "power1.inOut",
-        })
-        gsap.to(
-          mouseRightBackFoot.rotation, {
-          x: currentRightFootRotationX,
-          duration: mouseModelPartSpeed,
-          ease: "power1.inOut",
-        })
-        gsap.to(
-          mouseRightBackFoot.position, {
-          y: currentRightFootY,
-          duration: mouseModelPartSpeed,
-          ease: "power1.inOut",
-        })
-        gsap.to(
-          mouseBody.rotation, {
-          x: currentBodyRotationX,
-          duration: mouseModelPartSpeed,
-          ease: "power1.inOut",
-        })
-        gsap.to(
-          mouseTail.rotation, {
-          y: currentTailRotationY,
-          duration: mouseModelPartSpeed,
-          ease: "power1.inOut",
-        })
-        gsap.to(
-          mouseTail.position, {
-          y: currentTailPositionY,
-          duration: mouseModelPartSpeed,
-          ease: "power1.out",
-        })
-
-
-      }
-    })
-
-    gsap.to(
-      mouseLeftBackFoot.rotation, {
-      x: `-=${Math.PI / 2}`,
-      duration: mouseModelPartSpeed,
-      ease: "power1.out",
-    })
-
-    gsap.to(
-      mouseRightBackFoot.rotation, {
-      x: `-=${Math.PI / 2.4}`,
-      duration: mouseModelPartSpeed,
-      ease: "power1.out",
-    })
-
-
-    gsap.to(
-      mouseRightBackFoot.position, {
-      y: `+=0.01`,
-      duration: mouseModelPartSpeed,
-      ease: "power1.out",
-    })
-
-    gsap.to(
-      mouseBody.rotation, {
-      x: -0.4,
-      duration: mouseModelPartSpeed,
-      ease: "power1.out",
-    })
-
-    gsap.to(
-      mouseTail.rotation, {
-      y: -0.1,
-      duration: mouseModelPartSpeed,
-      ease: "power1.out",
-    })
-
-    gsap.to(
-      mouseTail.position, {
-      y: `+=0.1`,
-      duration: mouseModelPartSpeed,
-      ease: "power1.out",
-    })
-
-
-
-
-
-
-  }
-
-  const mouseMove = (x: number) => {
-    const moveDuration = 0.2 / speedMultiplier || 0.05;
-    gsap.to(mouseModel.position, {
-      duration: moveDuration,
-      ease: "power2.out",
-      x,
-      onStart: () => {
-        const sound = moveSounds[currentMoveSoundIndex]
-        currentMoveSoundIndex = (currentMoveSoundIndex + 1) % MAX_SOUND_POOL;
-        sound.currentTime = 0
-        sound.playbackRate = sound.playbackRate >= 2 ? 2 : 1 + (speedMultiplier * 0.005)
-        sound.play()
-      }
-    });
-    gsap.to(controls.target, {
-      duration: moveDuration,
-      ease: "power2.out",
-      x,
-    });
-    gsap.to(camera.position, {
-      duration: moveDuration,
-      ease: "power2.out",
-      x,
-    });
-  }
 
   window.addEventListener('keydown', handleKeydown)
+}
+
+const handleLeftMovement = () => {
+  if (mouseModel.position.x === 0) mouseMove(-POSITIONS.MOUSE_X)
+  if (mouseModel.position.x === POSITIONS.MOUSE_X) mouseMove(0)
+}
+
+const handleRightMovement = () => {
+  if (mouseModel.position.x === 0) mouseMove(POSITIONS.MOUSE_X)
+  if (mouseModel.position.x === -POSITIONS.MOUSE_X) mouseMove(0)
+}
+
+const handleJump = () => {
+  jump.value = true
+  const jumpSpeedFactor = 1 / speedMultiplier
+
+  const currentRightFootY = mouseRightBackFoot.position.y;
+  const currentLeftFootRotationX = mouseLeftBackFoot.rotation.x;
+  const currentRightFootRotationX = mouseRightBackFoot.rotation.x;
+  const currentBodyRotationX = mouseBody.rotation.x
+  const currentTailRotationY = mouseTail.rotation.y
+  const currentTailPositionY = mouseTail.position.y
+
+  const sound = jumpSounds[currentJumpSoundIndex]
+  sound.playbackRate = sound.playbackRate >= 2 ? 2 : 1 + (speedMultiplier * 0.005)
+  currentJumpSoundIndex = (currentJumpSoundIndex + 1) % MAX_SOUND_POOL;
+  sound.currentTime = 0
+  sound.play()
+
+  const mouseModelPartSpeed = 0.2 * jumpSpeedFactor || 0.03
+
+  gsap.to(
+    mouseModel.position, {
+    y: 0.23,
+    duration: 0.5 * jumpSpeedFactor || 0.1,
+    ease: "power1.out",
+    onComplete: () => {
+      gsap.to(mouseModel.position, {
+        y: 0, // Return to original height
+        duration: 0.25 * jumpSpeedFactor || 0.05,
+        ease: "bounce.out",
+        onComplete: () => {
+          jump.value = false
+        },
+      });
+
+      gsap.to(
+        mouseLeftBackFoot.rotation, {
+        x: currentLeftFootRotationX,
+        duration: mouseModelPartSpeed,
+        ease: "power1.inOut",
+      })
+      gsap.to(
+        mouseRightBackFoot.rotation, {
+        x: currentRightFootRotationX,
+        duration: mouseModelPartSpeed,
+        ease: "power1.inOut",
+      })
+      gsap.to(
+        mouseRightBackFoot.position, {
+        y: currentRightFootY,
+        duration: mouseModelPartSpeed,
+        ease: "power1.inOut",
+      })
+      gsap.to(
+        mouseBody.rotation, {
+        x: currentBodyRotationX,
+        duration: mouseModelPartSpeed,
+        ease: "power1.inOut",
+      })
+      gsap.to(
+        mouseTail.rotation, {
+        y: currentTailRotationY,
+        duration: mouseModelPartSpeed,
+        ease: "power1.inOut",
+      })
+      gsap.to(
+        mouseTail.position, {
+        y: currentTailPositionY,
+        duration: mouseModelPartSpeed,
+        ease: "power1.out",
+      })
+
+
+    }
+  })
+
+  gsap.to(
+    mouseLeftBackFoot.rotation, {
+    x: `-=${Math.PI / 2}`,
+    duration: mouseModelPartSpeed,
+    ease: "power1.out",
+  })
+
+  gsap.to(
+    mouseRightBackFoot.rotation, {
+    x: `-=${Math.PI / 2.4}`,
+    duration: mouseModelPartSpeed,
+    ease: "power1.out",
+  })
+
+
+  gsap.to(
+    mouseRightBackFoot.position, {
+    y: `+=0.01`,
+    duration: mouseModelPartSpeed,
+    ease: "power1.out",
+  })
+
+  gsap.to(
+    mouseBody.rotation, {
+    x: -0.4,
+    duration: mouseModelPartSpeed,
+    ease: "power1.out",
+  })
+
+  gsap.to(
+    mouseTail.rotation, {
+    y: -0.1,
+    duration: mouseModelPartSpeed,
+    ease: "power1.out",
+  })
+
+  gsap.to(
+    mouseTail.position, {
+    y: `+=0.1`,
+    duration: mouseModelPartSpeed,
+    ease: "power1.out",
+  })
+
+
+
+
+
+
+}
+
+const mouseMove = (x: number) => {
+  const moveDuration = 0.2 / speedMultiplier || 0.05;
+  gsap.to(mouseModel.position, {
+    duration: moveDuration,
+    ease: "power2.out",
+    x,
+    onStart: () => {
+      const sound = moveSounds[currentMoveSoundIndex]
+      currentMoveSoundIndex = (currentMoveSoundIndex + 1) % MAX_SOUND_POOL;
+      sound.currentTime = 0
+      sound.playbackRate = sound.playbackRate >= 2 ? 2 : 1 + (speedMultiplier * 0.005)
+      sound.play()
+    }
+  });
+  gsap.to(controls.target, {
+    duration: moveDuration,
+    ease: "power2.out",
+    x,
+  });
+  gsap.to(camera.position, {
+    duration: moveDuration,
+    ease: "power2.out",
+    x,
+  });
 }
 
 
@@ -1049,7 +1051,7 @@ onMounted(async () => {
   const minDist = 10; // Closest trees are 10 units away
   const maxDist = 70; // Farthest trees are 80 units away
   const exclusionZone = { x: [-5, 5], z: [0, 30] }; // No trees spawn here
-  for (let i = 0; i < 400; i++) {
+  for (let i = 0; i < 250; i++) {
     const tree = fakeTree.clone();
     let x, z;
     let attempts = 0;
@@ -1251,14 +1253,40 @@ async function restartGame() {
 
   </canvas>
   <button v-if="showButton" @click="startGame" class="game-start">Game Start</button>
-  <p class="distance">Distance: {{ Math.floor(distance) }}</p>
+  <div class="info">
+    <p class="distance">Distance: {{ Math.floor(distance) }}</p>
+    <div class="key-info">
+      <p>Left arrow: move left</p>
+      <p>Right arrow: move right</p>
+      <p>Top arrow: jump</p>
+    </div>
+  </div>
+
+
+  <p class="credit">Sound by <a href="https://www.zapsplat.com/" target="_blank">ZapSplat</a></p>
   <div v-if="showGameOverMessage" class="game-over">
     <p>Game over...</p>
     <button @click="restartGame">try again</button>
   </div>
+
+  <div v-if="gameStart && !gameOver" class="mobile-world">
+    <div class="handle-buttons">
+      <button @click="handleLeftMovement">&#9664;</button>
+      <button @click="handleJump">🔼</button>
+      <button @click="handleRightMovement"> &#9654;</button>
+    </div>
+  </div>
+
+
 </template>
 
 <style>
+.credit {
+  position: absolute;
+  right: 2rem;
+  bottom: 1rem;
+}
+
 button {
   font-size: 2rem;
   border: 2px white solid;
@@ -1292,13 +1320,73 @@ button.game-start {
   }
 }
 
-p.distance {
+.info {
   position: absolute;
-  font-size: 2rem;
   right: 2rem;
   top: 1rem;
   color: white;
+  text-align: right;
 
+  .distance {
+    font-size: 2rem;
+  }
+
+  .key-info {
+    font-size: 1rem;
+
+  }
+}
+
+
+
+.mobile-world {
+  display: none;
+}
+
+@media only screen and (max-width: 500px) {
+  button {
+    font-size: 1rem;
+    border: 2px white solid;
+  }
+
+  .game-over {
+    p {
+      font-size: 1.5rem;
+    }
+  }
+
+  .info {
+    .distance {
+      font-size: 1rem;
+    }
+
+    .key-info {
+      display: none
+    }
+  }
+
+  .mobile-world {
+    display: block;
+    position: absolute;
+    overflow: hidden;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    .handle-buttons {
+      position: absolute;
+      bottom: 10%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+
+  }
+
+  canvas {
+    overflow: scroll;
+  }
 }
 
 * {
