@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as THREE from "three"
-import { computed, onMounted, ref, useTemplateRef, watch, watchEffect } from 'vue'
+import { computed, onMounted, ref, useTemplateRef, watchEffect } from 'vue'
 import { DRACOLoader, GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import gsap from "gsap";
@@ -87,8 +87,8 @@ function loadModel(url: string): Promise<THREE.Group> {
     gltfLoader.load(url, (gltf) => {
       resolve(gltf.scene)
     },
-      (xhl) => {
-        const percentage = (xhl.loaded / xhl.total * 100).toFixed(0)
+      (_xhl) => {
+        // const percentage = (xhl.loaded / xhl.total * 100).toFixed(0)
         // console.log(`Loading: ${percentage}%`)
       },
       (err) => reject(err)
@@ -131,7 +131,7 @@ let mouseBody: THREE.Object3D
 let mouseBodyPositionY: number
 let mouseTail: THREE.Object3D
 let mouseTailPositionY: number
-let debugSphere: THREE.Mesh
+// let debugSphere: THREE.Mesh
 let mouseBoundingSphere: THREE.Sphere
 
 
@@ -610,12 +610,12 @@ function tick(
 
   let previousTime = 0
   const walkingSpeed = 20; // Adjust as needed
-  const stepHeight = 0.05; // How high the feet lift
-  const stepLength = 0.03; // How far forward/back feet mo
+  // const stepHeight = 0.05; // How high the feet lift
+  // const stepLength = 0.03; // How far forward/back feet mo
 
 
   const SPEED_INCREASE_INTERVAL = 3; // seconds
-  const SPEED_INCREMENT = 0.5;
+  // const SPEED_INCREMENT = 0.5;
   let speedIncreaseTimer = 0;
 
 
@@ -649,9 +649,9 @@ function tick(
 
       speedIncreaseTimer += deltaTime;
       if (speedIncreaseTimer >= SPEED_INCREASE_INTERVAL) {
-        speedMultiplier = speedMultiplier >= 5 ? 5 : speedMultiplier + 0.1
+        speedMultiplier = speedMultiplier >= 4 ? 4 : speedMultiplier + 0.1
         SPEED = BASE_SPEED * speedMultiplier;
-        if (speedMultiplier < 5) {
+        if (speedMultiplier < 4) {
           speedIncreaseTimer = 0
         }
         gameBackground.playbackRate = gameBackground.playbackRate >= 2 ? 2 : 1 + (speedMultiplier * 0.005)
