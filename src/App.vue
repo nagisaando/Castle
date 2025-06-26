@@ -33,9 +33,9 @@ const POSITIONS = {
   MOUSE_START_Z: 4,
   MOUSE_X: 0.8,
   CAMERA: { z: 8, y: 1.25, x: 0 },
-  // CAMERA_TO_START: { z: 55, y: 40, x: 30 }
+  CAMERA_TO_START: { z: 55, y: 40, x: 30 }
   // CAMERA_TO_START: { z: 60, y: 60, x: 60 }
-  CAMERA_TO_START: { z: 8, y: 1.25, x: 0 },
+  // CAMERA_TO_START: { z: 8, y: 1.25, x: 0 },
 }
 
 // debug
@@ -112,7 +112,7 @@ tatamiColorTexture.colorSpace = THREE.SRGBColorSpace
 /**
  * Lights
  */
-const ambientLight = new THREE.AmbientLight(0xbda8a8, 1.2)
+const ambientLight = new THREE.AmbientLight(0xbda8a8, 3)
 scene.add(ambientLight)
 
 const directionalLight = new THREE.DirectionalLight(0xbda8a8, 3)
@@ -132,15 +132,8 @@ let mouseBodyPositionY: number
 let mouseTail: THREE.Object3D
 let mouseTailPositionY: number
 let debugSphere: THREE.Mesh
-
-// const mouse = new THREE.Mesh(
-//   new THREE.SphereGeometry(SIZES.MOUSE), new THREE.MeshBasicMaterial()
-// )
-
 let mouseBoundingSphere: THREE.Sphere
 
-// mouse.position.set(0, POSITIONS.MOUSE_Y, POSITIONS.MOUSE_START_Z)
-// scene.add(mouse)
 
 function initMouse() {
   mouseModel.position.set(0, POSITIONS.MOUSE_Y, POSITIONS.MOUSE_START_Z)
@@ -166,17 +159,17 @@ function initMouse() {
 
 
   // we can remove this later, this is just visualize sphere 
-  const debugSphereGeometry = new THREE.SphereGeometry(1, 16, 16);
-  const debugSphereMaterial = new THREE.MeshBasicMaterial({
-    color: 0xffff00,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.5
-  });
-  debugSphere = new THREE.Mesh(debugSphereGeometry, debugSphereMaterial);
-  debugSphere.position.copy(mouseBoundingSphere.center);
-  debugSphere.scale.setScalar(mouseBoundingSphere.radius);
-  scene.add(debugSphere);
+  // const debugSphereGeometry = new THREE.SphereGeometry(1, 16, 16);
+  // const debugSphereMaterial = new THREE.MeshBasicMaterial({
+  //   color: 0xffff00,
+  //   wireframe: true,
+  //   transparent: true,
+  //   opacity: 0.5
+  // });
+  // debugSphere = new THREE.Mesh(debugSphereGeometry, debugSphereMaterial);
+  // debugSphere.position.copy(mouseBoundingSphere.center);
+  // debugSphere.scale.setScalar(mouseBoundingSphere.radius);
+  // scene.add(debugSphere);
 }
 
 function updateMouseBoundingSphere() {
@@ -192,8 +185,8 @@ function updateMouseBoundingSphere() {
   mouseBody.getWorldPosition(mouseBoundingSphere.center)
 
   // Debug visualization (optional)
-  debugSphere.position.copy(mouseBoundingSphere.center)
-  debugSphere.scale.setScalar(mouseBoundingSphere.radius)
+  // debugSphere.position.copy(mouseBoundingSphere.center)
+  // debugSphere.scale.setScalar(mouseBoundingSphere.radius)
 }
 
 
@@ -207,12 +200,15 @@ type RoomGroup = {
   roomModel: THREE.Group,
   hide: boolean,
   shuriken: {
-    obj: THREE.Mesh,
+    obj: THREE.Group,
     boundingBox: THREE.Box3,
     show: boolean
   }
 
 }
+
+let shurikenModel: THREE.Group;
+
 const rooms = ref<RoomGroup[]>(new Array(6))
 
 let roomModelSize: THREE.Vector3
@@ -236,13 +232,16 @@ function getNextRoomPosition() {
 let doorLeftNobModel: THREE.Group;
 let doorRightNobModel: THREE.Group;
 
+// const obj = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.1), new THREE.MeshBasicMaterial({}))
+// obj.position.y = 0.1
+// scene.add(obj)
 function createRoom(index: number) {
   const room = roomModel.clone()
   const door1 = doorLeftNobModel.clone()
   const door2 = doorLeftNobModel.clone()
   const door3 = doorRightNobModel.clone()
 
-  const shuriken = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.1), new THREE.MeshBasicMaterial({}))
+  const shuriken = shurikenModel.clone()
 
 
 
@@ -316,8 +315,7 @@ function createRoom(index: number) {
 
   // place the shuriken behind the door to open
 
-  shuriken.position.y = 0.1
-  shuriken.position.z = roomGroup.doors[randomDoor].obj.position.z + 0.2
+  shuriken.position.z = roomGroup.doors[randomDoor].obj.position.z - 0.2
   shuriken.position.x = roomGroup.doors[randomDoor].obj.position.x
 
 
@@ -325,6 +323,11 @@ function createRoom(index: number) {
   // Add a shuriken in about 1 out of 4 rooms (25% chance)
   if (Math.random() < 0.25) {
     roomGroup.shuriken.show = true
+  } else {
+    roomGroup.shuriken.show = false
+    // if shuriken is in the first index AND if Math.random() is bigger than 0.25, 
+    // we will hide shuriken
+    shuriken.visible = false
   }
 
   // Update ring buffer
@@ -412,6 +415,9 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
       e.preventDefault();
     }
 
+    if (code === 'Space') {
+      gameOver.value != gameOver.value
+    }
 
     // Only handle movement if game has started
     if (!gameStart.value || gameOver.value) return
@@ -454,7 +460,7 @@ function setupKeyboardControls(controls: OrbitControls, camera: THREE.Perspectiv
 
     gsap.to(
       mouseModel.position, {
-      y: 0.2,
+      y: 0.23,
       duration: 0.5 * jumpSpeedFactor || 0.1,
       ease: "power1.out",
       onComplete: () => {
@@ -756,7 +762,7 @@ function resetRoomGroup(roomGroup: RoomGroup) {
 
   // reset shuriken
   const randomDoorOffset = roomGroup.roomModel.position.z + (roomGroup.doors.door2.open ? - 0.02 : + 0.03)
-  roomGroup.shuriken.obj.position.z = randomDoorOffset + 0.2
+  roomGroup.shuriken.obj.position.z = randomDoorOffset - 0.2
   let randomDoorXPosition = 0 // default is second door x position
   if (roomGroup.doors.door1.open) {
     randomDoorXPosition = -POSITIONS.DOOR_X_OFFSET
@@ -993,13 +999,14 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
 
 
-  const [doorLeftNobModelData, doorRightModelData, castle, room, fakeTree, mouse] = await Promise.all([
+  const [doorLeftNobModelData, doorRightModelData, castle, room, fakeTree, mouse, shuriken] = await Promise.all([
     loadModel('/model/left-door-nob/door.gltf'),
     loadModel('/model/right-door-nob/door.gltf'),
     loadModel('/model/castle/castle.gltf'),
     loadModel('/model/interior/interior.gltf'),
     loadModel('/model/tree-fake/tree-fake.gltf'),
     loadModel('/model/mouse/mouse.gltf'),
+    loadModel('/model/shuriken/shuriken.gltf'),
   ])
 
 
@@ -1028,45 +1035,48 @@ onMounted(async () => {
   doorRightNobModel = doorRightModelData
   doorRightModelData.position.set(0.8, 0, 0)
 
+  shurikenModel = shuriken
+  // scene.add(shuriken)
+
   initRooms()
   initMouse()
 
 
 
   castleModel = castle
-  // scene.add(castleModel)
+  scene.add(castleModel)
 
   const minDist = 10; // Closest trees are 10 units away
   const maxDist = 70; // Farthest trees are 80 units away
   const exclusionZone = { x: [-5, 5], z: [0, 30] }; // No trees spawn here
-  // for (let i = 0; i < 400; i++) {
-  //   const tree = fakeTree.clone();
-  //   let x, z;
-  //   let attempts = 0;
-  //   const maxAttempts = 10; // Safety net to prevent infinite loops
+  for (let i = 0; i < 400; i++) {
+    const tree = fakeTree.clone();
+    let x, z;
+    let attempts = 0;
+    const maxAttempts = 10; // Safety net to prevent infinite loops
 
-  //   do {
-  //     // Random angle and distance within range
-  //     const angle = Math.random() * Math.PI * 2;
-  //     const distance = minDist + Math.random() * (maxDist - minDist);
+    do {
+      // Random angle and distance within range
+      const angle = Math.random() * Math.PI * 2;
+      const distance = minDist + Math.random() * (maxDist - minDist);
 
-  //     x = Math.cos(angle) * distance;
-  //     z = Math.sin(angle) * distance;
-  //     attempts++;
-  //   } while (
-  //     // Keep trying if inside exclusion zone
-  //     (x >= exclusionZone.x[0] && x <= exclusionZone.x[1] &&
-  //       z >= exclusionZone.z[0] && z <= exclusionZone.z[1]) &&
-  //     attempts < maxAttempts
-  //   );
+      x = Math.cos(angle) * distance;
+      z = Math.sin(angle) * distance;
+      attempts++;
+    } while (
+      // Keep trying if inside exclusion zone
+      (x >= exclusionZone.x[0] && x <= exclusionZone.x[1] &&
+        z >= exclusionZone.z[0] && z <= exclusionZone.z[1]) &&
+      attempts < maxAttempts
+    );
 
-  //   // Skip if too many attempts (optional)
-  //   if (attempts >= maxAttempts) continue;
+    // Skip if too many attempts (optional)
+    if (attempts >= maxAttempts) continue;
 
-  //   tree.position.set(x, 0, z);
-  //   scene.add(tree);
-  //   trees.push(tree)
-  // }
+    tree.position.set(x, 0, z);
+    scene.add(tree);
+    trees.push(tree)
+  }
 
 
   // Start game loop
@@ -1165,7 +1175,7 @@ function moveRoomsToStartPlace(): Promise<void> {
       else if (room.doors.door3.open) openDoorPosition = roomPosition + 0.03;
 
       tl.to(room.shuriken.obj.position, {
-        z: openDoorPosition + 0.2,
+        z: openDoorPosition - 0.2,
         duration: 3,
       }, 'reset')
 
