@@ -212,7 +212,9 @@ let doorLeftNobBoundingBox: THREE.Box3;
 let doorRightNobBoundingBox: THREE.Box3;
 let shurikenBoundingBox: THREE.Box3;
 
-const rooms = ref<RoomGroup[]>(new Array(6))
+const isMobile = window.matchMedia("(max-width: 500px)").matches;
+const roomBufferSize = isMobile ? 3 : 6;
+const rooms = ref<RoomGroup[]>(new Array(roomBufferSize))
 
 let roomModelSize: THREE.Vector3
 let roomModel: THREE.Group;
@@ -915,6 +917,11 @@ const showButton = ref(true)
 function startGame() {
   if (!showButton.value) return
 
+  // Unlock audio context on user interaction
+  // since mobile has difficulty to play sound when user did not interact the mobile screen well
+  gameBackground.play();
+  gameBackground.pause();
+
   showButton.value = false
   animateCameraToCloseUp(controls, camera)
 
@@ -997,7 +1004,9 @@ onMounted(async () => {
    */
   const renderer = new THREE.WebGLRenderer({
     canvas: canvas.value as HTMLCanvasElement,
-    antialias: !isMobile, // Disable antialias on mobile
+    antialias: !isMobile, // Disable antialias on mobile for performance concern
+    //  It explicitly tells the browser, "My application is graphically demanding. Please use the high - performance discrete GPU if it's available. A smooth framerate is more important than saving battery life."
+    powerPreference: 'high-performance',
   })
   renderer.setSize(sizes.width, sizes.height)
   renderer.setPixelRatio(sizes.pixelRatio)
@@ -1068,7 +1077,6 @@ onMounted(async () => {
 
   castleModel = castle
   scene.add(castleModel)
-
 
   const treeCount = isMobile ? 50 : 250;
 
