@@ -1269,12 +1269,11 @@ async function restartGame() {
     <button @click="restartGame">try again</button>
   </div>
 
-  <div v-if="gameStart && !gameOver" class="mobile-world">
-    <div class="handle-buttons">
-      <button @click="handleLeftMovement">&#9664;</button>
-      <button @click="handleJump">🔼</button>
-      <button @click="handleRightMovement"> &#9654;</button>
-    </div>
+
+  <div class="handle-buttons" v-if="gameStart && !gameOver">
+    <button @click="handleLeftMovement">&#9664;</button>
+    <button @click="handleJump">🔼</button>
+    <button @click="handleRightMovement"> &#9654;</button>
   </div>
 
 
@@ -1337,12 +1336,6 @@ button.game-start {
   }
 }
 
-
-
-.mobile-world {
-  display: none;
-}
-
 @media only screen and (max-width: 500px) {
   button {
     font-size: 1rem;
@@ -1365,24 +1358,18 @@ button.game-start {
     }
   }
 
-  .mobile-world {
-    display: block;
+
+
+
+  .handle-buttons {
     position: absolute;
-    overflow: hidden;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-
-    .handle-buttons {
-      position: absolute;
-      bottom: 10%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
-
-
+    bottom: 10%;
+    left: 50%;
+    transform: translate(-50%, -50%);
   }
+
+
+
 
   canvas {
     overflow: scroll;
@@ -1397,6 +1384,7 @@ button.game-start {
 html,
 body {
   overflow: hidden;
+  touch-action: none;
 }
 
 .webgl {
