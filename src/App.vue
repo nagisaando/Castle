@@ -208,6 +208,9 @@ type RoomGroup = {
 }
 
 let shurikenModel: THREE.Group;
+let doorLeftNobBoundingBox: THREE.Box3;
+let doorRightNobBoundingBox: THREE.Box3;
+let shurikenBoundingBox: THREE.Box3;
 
 const rooms = ref<RoomGroup[]>(new Array(6))
 
@@ -238,10 +241,15 @@ let doorRightNobModel: THREE.Group;
 function createRoom(index: number) {
   const room = roomModel.clone()
   const door1 = doorLeftNobModel.clone()
+  // This gets the master blueprint for the door's shape. This blueprint is centered at the origin(0, 0, 0) and has no rotation.It just defines the size.
+  door1.userData.templateBoundingBox = doorLeftNobBoundingBox;
   const door2 = doorLeftNobModel.clone()
+  door2.userData.templateBoundingBox = doorLeftNobBoundingBox;
   const door3 = doorRightNobModel.clone()
+  door3.userData.templateBoundingBox = doorRightNobBoundingBox;
 
   const shuriken = shurikenModel.clone()
+  shuriken.userData.templateBoundingBox = shurikenBoundingBox;
 
 
 
@@ -282,26 +290,26 @@ function createRoom(index: number) {
       door1: {
         obj: door1,
         open: false,
-        boundingBox: new THREE.Box3(),
+        boundingBox: doorLeftNobBoundingBox.clone(),
         opened: false
 
       },
       door2: {
         obj: door2,
         open: false,
-        boundingBox: new THREE.Box3(),
+        boundingBox: doorLeftNobBoundingBox.clone(),
         opened: false
       },
       door3: {
         obj: door3,
         open: false,
-        boundingBox: new THREE.Box3(),
+        boundingBox: doorRightNobBoundingBox.clone(),
         opened: false
       },
     },
     shuriken: {
       obj: shuriken,
-      boundingBox: new THREE.Box3(),
+      boundingBox: shurikenBoundingBox.clone(),
       show: false
     },
     hide: false,
@@ -793,18 +801,27 @@ function checkCollisions(room: RoomGroup) {
     const doorsToCheck = [room.doors.door1, room.doors.door2, room.doors.door3]
 
     updateMouseBoundingSphere()
-    const boundingBoxes = doorsToCheck.map(door => {
-      door.boundingBox.setFromObject(door.obj)
-      return door.boundingBox
+
+    // By applying the world matrix to the bounding box, we move the box to the correct position
+    // without recalculating its geometry from scratch. This is much faster.
+    const doorBoundingBoxes = doorsToCheck.map(door => {
+      // `.copy(...)`: This takes our door's unique, reusable boundingBox and resets it to the shape and size of the master blueprint.
+      // It's like stamping a fresh, perfectly - sized box at the world's origin.
+      // `.applyMatrix4(door.obj.matrixWorld)`: This is the magic step. It takes the box we just stamped at the origin and applies the object's
+      // unique matrixWorld to it.This single operation moves, rotates, and
+      // scales the bounding box from the origin to the object's final
+      // position and orientation in the 3D world.
+      return door.boundingBox.copy(door.obj.userData.templateBoundingBox).applyMatrix4(door.obj.matrixWorld)
     })
-    room.shuriken.boundingBox.setFromObject(room.shuriken.obj)
+
     if (room.shuriken.show) {
-      boundingBoxes.push(room.shuriken.boundingBox)
+      const shurikenBoundingBox = room.shuriken.boundingBox.copy(room.shuriken.obj.userData.templateBoundingBox).applyMatrix4(room.shuriken.obj.matrixWorld)
+      doorBoundingBoxes.push(shurikenBoundingBox)
     }
 
     mouseModelBoundingBox.setFromObject(mouseModel)
 
-    if (boundingBoxes.some(boundBox => mouseBoundingSphere.intersectsBox(boundBox))) {
+    if (doorBoundingBoxes.some(boundBox => mouseBoundingSphere.intersectsBox(boundBox))) {
       gameOver.value = true
       showGameOverMessage.value = true
     }
@@ -973,12 +990,14 @@ onMounted(async () => {
 
   setupKeyboardControls()
 
+  const isMobile = window.matchMedia("(max-width: 500px)").matches;
+
   /**
    * Renderer
    */
   const renderer = new THREE.WebGLRenderer({
     canvas: canvas.value as HTMLCanvasElement,
-    antialias: true,
+    antialias: !isMobile, // Disable antialias on mobile
   })
   renderer.setSize(sizes.width, sizes.height)
   renderer.setPixelRatio(sizes.pixelRatio)
@@ -1035,9 +1054,11 @@ onMounted(async () => {
   doorLeftNobModel = doorLeftNobModelData
 
   doorRightNobModel = doorRightModelData
-  doorRightModelData.position.set(0.8, 0, 0)
 
   shurikenModel = shuriken
+  doorLeftNobBoundingBox = new THREE.Box3().setFromObject(doorLeftNobModel)
+  doorRightNobBoundingBox = new THREE.Box3().setFromObject(doorRightNobModel)
+  shurikenBoundingBox = new THREE.Box3().setFromObject(shurikenModel)
   // scene.add(shuriken)
 
   initRooms()
@@ -1048,7 +1069,7 @@ onMounted(async () => {
   castleModel = castle
   scene.add(castleModel)
 
-  const isMobile = window.matchMedia("(max-width: 500px)").matches;
+
   const treeCount = isMobile ? 50 : 250;
 
   const minDist = 10; // Closest trees are 10 units away
