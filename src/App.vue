@@ -1048,10 +1048,13 @@ onMounted(async () => {
   castleModel = castle
   scene.add(castleModel)
 
+  const isMobile = window.matchMedia("(max-width: 500px)").matches;
+  const treeCount = isMobile ? 50 : 250;
+
   const minDist = 10; // Closest trees are 10 units away
-  const maxDist = 70; // Farthest trees are 80 units away
-  const exclusionZone = { x: [-5, 5], z: [0, 30] }; // No trees spawn here
-  for (let i = 0; i < 250; i++) {
+  const maxDist = isMobile ? 30 : 70; // Farthest trees are 80 units away
+  const exclusionZone = { x: [-5, 5], z: [0, isMobile ? 10 : 30] }; // No trees spawn here
+  for (let i = 0; i < treeCount; i++) {
     const tree = fakeTree.clone();
     let x, z;
     let attempts = 0;
