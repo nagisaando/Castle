@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import * as THREE from "three"
-import { SIZES, POSITIONS, initialSpeed } from './constants'
+import { POSITIONS, initialSpeed } from './constants'
 import type { Door, DoorGroup, RoomGroup } from './types';
 import { computed, onMounted, ref, useTemplateRef, watchEffect } from 'vue'
 import { DRACOLoader, GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
-// import Stats from "three/examples/jsm/libs/stats.module.js";
+import { useThreeSetup } from './composables/useThreeSetup'
+
 import gsap from "gsap";
 
 
@@ -13,12 +14,6 @@ const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 let SPEED = initialSpeed
 const BASE_SPEED = initialSpeed
 let speedMultiplier = 1.0;
-
-// debug
-// const gui = new GUI();
-// const stats = new Stats()
-
-
 
 
 
@@ -39,8 +34,7 @@ const assetsLoaded = ref(false);
 
 
 // Scene
-const scene = new THREE.Scene()
-scene.background = new THREE.Color().setHex(0x112233);
+// Scene will be created by useThreeSetup composable
 
 // Loaders
 const gltfLoader = new GLTFLoader()
@@ -73,15 +67,7 @@ gltfLoader.setDRACOLoader(dracoLoader)
 
 const textureLoader = new THREE.TextureLoader()
 
-/**
- * Lights
- */
-const ambientLight = new THREE.AmbientLight(0xbda8a8, 3)
-scene.add(ambientLight)
-
-const directionalLight = new THREE.DirectionalLight(0xbda8a8, 3)
-directionalLight.position.set(1, 0, 1)
-scene.add(directionalLight)
+// Lights will be created by useThreeSetup composable
 
 
 // Mouse
@@ -305,14 +291,7 @@ function initRooms() {
 
 
 
-function setupControls(camera: THREE.PerspectiveCamera) {
-  const controls = new OrbitControls(camera, canvas.value)
-  controls.enableDamping = true
-  controls.enableZoom = false;    // Disable zoom
-  controls.enablePan = false;     // Disable pan
-  controls.enableRotate = false;  // Disable manual rotation
-  return controls
-}
+// Controls setup moved to useThreeSetup composable
 
 
 // Jump
@@ -854,48 +833,7 @@ function fadeDoors(room: RoomGroup) {
 
 // castle 
 
-// floor 
-
-const alphaTexture = textureLoader.load('/texture/alpha.jpg')
-const floorColorTexture = textureLoader.load('/texture/ground/brown_mud_leaves_01_diff_1k.jpg')
-floorColorTexture.colorSpace = THREE.SRGBColorSpace
-const floorNormalTexture = textureLoader.load('/texture/ground/brown_mud_leaves_01_nor_gl_1k.png')
-const floorARMTexture = textureLoader.load('/texture/ground/brown_mud_leaves_01_arm_1k.jpg')
-
-
-floorColorTexture.repeat.set(10, 10)
-floorARMTexture.repeat.set(10, 10)
-floorNormalTexture.repeat.set(10, 10)
-
-floorColorTexture.wrapS = THREE.RepeatWrapping
-floorColorTexture.wrapT = THREE.RepeatWrapping
-
-floorARMTexture.wrapS = THREE.RepeatWrapping
-floorARMTexture.wrapT = THREE.RepeatWrapping
-
-floorNormalTexture.wrapS = THREE.RepeatWrapping
-floorNormalTexture.wrapT = THREE.RepeatWrapping
-
-let floor: THREE.Mesh<
-  THREE.PlaneGeometry,
-  THREE.MeshStandardMaterial | THREE.MeshBasicMaterial
-> = new THREE.Mesh(new THREE.PlaneGeometry(80, 80),
-  new THREE.MeshStandardMaterial({
-    alphaMap: alphaTexture,
-    transparent: true,
-    map: floorColorTexture,
-    aoMap: floorARMTexture,
-    roughnessMap: floorARMTexture,
-    metalnessMap: floorARMTexture,
-    normalMap: floorNormalTexture
-  }
-
-  ))
-floor.rotation.x = -Math.PI / 2
-scene.add(floor)
-
-
-scene.fog = new THREE.FogExp2('#112233', 0.015)
+// Floor will be created in onMounted
 
 
 
@@ -903,8 +841,20 @@ let castleModel: THREE.Group | null
 let trees: THREE.Group[] = []
 let catFeetModel: THREE.Group;
 
+// Floor and textures will be initialized in onMounted
+let floor: THREE.Mesh<
+  THREE.PlaneGeometry,
+  THREE.MeshStandardMaterial | THREE.MeshBasicMaterial
+>
+let alphaTexture: THREE.Texture
+let floorColorTexture: THREE.Texture
+let floorNormalTexture: THREE.Texture
+let floorARMTexture: THREE.Texture
+
 let camera: THREE.PerspectiveCamera
 let controls: OrbitControls
+let scene: THREE.Scene
+let renderer: THREE.WebGLRenderer
 
 const showButton = ref(true)
 function startGame() {
@@ -973,62 +923,51 @@ onMounted(async () => {
   // Debug
   // document.body.appendChild(stats.dom)
 
-
-  /**
-   * Sizes
-   */
-
-  const sizes = {
-    width: window.innerWidth,
-    height: window.innerHeight,
-    pixelRatio: Math.min(window.devicePixelRatio, 2)
-  }
-
-  /**
-  * Camera
-  */
-  // Base camera
-  camera = new THREE.PerspectiveCamera(25, sizes.width / sizes.height, 0.1, 400)
-  camera.position.z = POSITIONS.CAMERA_TO_START.z
-  camera.position.y = POSITIONS.CAMERA_TO_START.y
-  camera.position.x = POSITIONS.CAMERA_TO_START.x
-  scene.add(camera)
-
-  // Controls
-  controls = setupControls(camera)
+  // Initialize Three.js setup
+  const threeSetup = useThreeSetup(canvas)
+  scene = threeSetup.scene
+  camera = threeSetup.camera
+  renderer = threeSetup.renderer
+  controls = threeSetup.controls
 
   setupKeyboardControls()
 
+  // Create floor
+  alphaTexture = textureLoader.load('/texture/alpha.jpg')
+  floorColorTexture = textureLoader.load('/texture/ground/brown_mud_leaves_01_diff_1k.jpg')
+  floorColorTexture.colorSpace = THREE.SRGBColorSpace
+  floorNormalTexture = textureLoader.load('/texture/ground/brown_mud_leaves_01_nor_gl_1k.png')
+  floorARMTexture = textureLoader.load('/texture/ground/brown_mud_leaves_01_arm_1k.jpg')
+
+  floorColorTexture.repeat.set(10, 10)
+  floorARMTexture.repeat.set(10, 10)
+  floorNormalTexture.repeat.set(10, 10)
+
+  floorColorTexture.wrapS = THREE.RepeatWrapping
+  floorColorTexture.wrapT = THREE.RepeatWrapping
+
+  floorARMTexture.wrapS = THREE.RepeatWrapping
+  floorARMTexture.wrapT = THREE.RepeatWrapping
+
+  floorNormalTexture.wrapS = THREE.RepeatWrapping
+  floorNormalTexture.wrapT = THREE.RepeatWrapping
+
+  floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80),
+    new THREE.MeshStandardMaterial({
+      alphaMap: alphaTexture,
+      transparent: true,
+      map: floorColorTexture,
+      aoMap: floorARMTexture,
+      roughnessMap: floorARMTexture,
+      metalnessMap: floorARMTexture,
+      normalMap: floorNormalTexture
+    }))
+  floor.rotation.x = -Math.PI / 2
+  scene.add(floor)
+
+  scene.fog = new THREE.FogExp2('#112233', 0.015)
+
   const isMobile = window.matchMedia("(max-width: 500px)").matches;
-
-  /**
-   * Renderer
-   */
-  const renderer = new THREE.WebGLRenderer({
-    canvas: canvas.value as HTMLCanvasElement,
-    antialias: !isMobile, // Disable antialias on mobile for performance concern
-    //  It explicitly tells the browser, "My application is graphically demanding. Please use the high - performance discrete GPU if it's available. A smooth framerate is more important than saving battery life."
-    powerPreference: 'high-performance',
-  })
-  renderer.setSize(sizes.width, sizes.height)
-  renderer.setPixelRatio(sizes.pixelRatio)
-
-  // Handle resize
-  const handleResize = () => {
-    // Update sizes 
-    sizes.width = window.innerWidth
-    sizes.height = window.innerHeight
-    sizes.pixelRatio = Math.min(window.devicePixelRatio, 2)
-
-    // Update camera
-    camera.aspect = sizes.width / sizes.height
-    camera.updateProjectionMatrix()
-
-    // Update renderer
-    renderer.setSize(sizes.width, sizes.height)
-    renderer.setPixelRatio(sizes.pixelRatio)
-  }
-  window.addEventListener('resize', handleResize)
 
   const modelsToLoad = [
     '/model/left-door-nob/door.gltf',
