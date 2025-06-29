@@ -15,6 +15,8 @@ import gsap from "gsap";
 // 6. object
 // 7. ending cat[DONE]
 
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
 const SIZES = {
   FLOOR: { width: 2.5, height: 6 },
   MOUSE: 0.2
@@ -82,11 +84,14 @@ const gltfLoader = new GLTFLoader()
 function loadModel(url: string, onProgress: (progress: number) => void): Promise<THREE.Group> {
   return new Promise((resolve, reject) => {
     gltfLoader.load(url, (gltf) => {
+      onProgress(100); // Ensure it reports 100% on completion
       resolve(gltf.scene)
     },
       (xhr) => {
-        const percentage = (xhr.loaded / xhr.total * 100);
-        onProgress(percentage);
+        if (xhr.lengthComputable) {
+          const percentage = Math.min((xhr.loaded / xhr.total * 100), 100); // Clamp progress to 100
+          onProgress(percentage);
+        }
       },
       (err) => reject(err)
     )
@@ -663,7 +668,11 @@ function tick(
         if (speedMultiplier < 4) {
           speedIncreaseTimer = 0
         }
-        gameBackground.playbackRate = gameBackground.playbackRate >= 2 ? 2 : 1 + (speedMultiplier * 0.005)
+        // safari has issue with .playbackRate and it glitches the sound. 
+        // instead for safari, we don't speed up
+        if (!isSafari) {
+          gameBackground.playbackRate = gameBackground.playbackRate >= 2 ? 2 : 1 + (speedMultiplier * 0.005)
+        }
       }
 
 
@@ -1000,7 +1009,7 @@ function startGame() {
   }, 6000)
 }
 
-const modelProgress = ref<number[]>([]);
+const modelProgress = ref<number[]>(new Array(8).fill(0));
 
 const totalProgress = computed(() => {
   const sum = modelProgress.value.reduce((acc, curr) => acc + curr, 0);
@@ -1437,6 +1446,7 @@ button {
     font-size: 1.3rem;
     text-align: left;
     margin-top: 2rem;
+    color: white;
 
     p {
       padding: 1rem 0;
@@ -1489,6 +1499,7 @@ button {
 
   .key-info {
     text-align: left;
+    color: white;
 
     p {
       padding: 0.2rem 0;
