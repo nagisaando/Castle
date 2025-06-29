@@ -13,9 +13,7 @@ import gsap from "gsap";
 // 4. Sphere not copying in the beginning [DONE]
 // 5. Speed really slow [DONE]
 // 6. object
-// 7. ending cat
-
-// instead of adding shuriken everytime, let's put 1 shuriken per room and toggle visibility instead 
+// 7. ending cat[DONE]
 
 const SIZES = {
   FLOOR: { width: 2.5, height: 6 },
@@ -33,9 +31,9 @@ const POSITIONS = {
   MOUSE_START_Z: 4,
   MOUSE_X: 0.8,
   CAMERA: { z: 8, y: 1.25, x: 0 },
-  // CAMERA_TO_START: { z: 55, y: 40, x: 30 }
+  CAMERA_TO_START: { z: 55, y: 40, x: 30 }
   // CAMERA_TO_START: { z: 60, y: 60, x: 60 }
-  CAMERA_TO_START: { z: 8, y: 1.25, x: 0 },
+  // CAMERA_TO_START: { z: 8, y: 1.25, x: 0 },
 }
 
 // debug
@@ -359,10 +357,10 @@ function initRooms() {
 
 function setupControls(camera: THREE.PerspectiveCamera) {
   const controls = new OrbitControls(camera, canvas.value)
-  // controls.enableDamping = true
-  // controls.enableZoom = false;    // Disable zoom
-  // controls.enablePan = false;     // Disable pan
-  // controls.enableRotate = false;  // Disable manual rotation
+  controls.enableDamping = true
+  controls.enableZoom = false;    // Disable zoom
+  controls.enablePan = false;     // Disable pan
+  controls.enableRotate = false;  // Disable manual rotation
   return controls
 }
 
@@ -745,7 +743,7 @@ function recycleRoom() {
   roomToRecycle.doors.door3.obj.position.x = POSITIONS.DOOR_X_OFFSET
 
 
-  // we are updating the position of shriken based on the updated door place so we need to place after the positioning door 
+  // we are updating the position of shuriken based on the updated door place so we need to place after the positioning door 
   // we probably need to refactor this
   resetRoomGroup(roomToRecycle,)
 
@@ -999,6 +997,7 @@ function startGame() {
           room.shuriken.obj.visible = true
       }
     })
+    catFeetModel.visible = true
     gameStart.value = true
     gameBackground.currentTime = 0
     gameBackground.play()
@@ -1099,6 +1098,7 @@ onMounted(async () => {
   catFeetModel.position.z = 8
   catFeetModel.rotation.x = Math.PI / 8
   catFeetModel.position.y = 0.7
+  catFeetModel.visible = false
   scene.add(catFeetModel)
 
 
@@ -1376,13 +1376,21 @@ async function restartGame() {
   <div v-if="!assetsLoaded" class="loading-overlay">
     <p>Loading... {{ totalProgress }}%</p>
   </div>
-  <button v-if="assetsLoaded && showButton" @click="startGame" class="game-start">Game Start</button>
+  <div v-if="assetsLoaded && showButton" class="game-start">
+    <button @click="startGame">Game Start</button>
+    <div class="key-info">
+      <p><span class="key">&lt;</span>: move left</p>
+      <p><span class="key">&gt;</span>: move right</p>
+      <p><span class="key">&#x22C0;</span>: jump</p>
+    </div>
+  </div>
+
   <div class="info">
     <p class="distance">Distance: {{ Math.floor(distance) }}</p>
-    <div class="key-info">
-      <p>Left arrow: move left</p>
-      <p>Right arrow: move right</p>
-      <p>Top arrow: jump</p>
+    <div v-if="gameStart" class="key-info">
+      <p><span class="key">&lt;</span>: move left</p>
+      <p><span class="key">&gt;</span>: move right</p>
+      <p><span class="key">&#x22C0;</span>: jump</p>
     </div>
   </div>
 
@@ -1424,11 +1432,32 @@ button {
   border: 2px white solid;
 }
 
-button.game-start {
+.game-start {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+
+  .key-info {
+    font-size: 1.3rem;
+    text-align: left;
+    margin-top: 2rem;
+
+    p {
+      padding: 1rem 0;
+    }
+  }
+}
+
+.key {
+  border: 1px solid white;
+  padding: 1rem 2rem;
+  margin-right: 1rem;
+}
+
+.key-info {
+  font-size: 1rem;
+
 }
 
 .game-over {
@@ -1464,9 +1493,21 @@ button.game-start {
   }
 
   .key-info {
-    font-size: 1rem;
+    text-align: left;
 
+    p {
+      padding: 0.2rem 0;
+    }
+
+    .key {
+      border: 1px solid white;
+      padding: 0.2rem 0.4rem;
+      margin-right: 0.6rem;
+    }
   }
+
+
+
 }
 
 @media only screen and (max-width: 500px) {
@@ -1486,10 +1527,15 @@ button.game-start {
       font-size: 1rem;
     }
 
-    .key-info {
-      display: none
-    }
+
+
+
   }
+
+  .key-info {
+    display: none
+  }
+
 
 
 
