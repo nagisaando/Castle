@@ -1,21 +1,12 @@
 <script setup lang="ts">
 import * as THREE from "three"
+import { SIZES, POSITIONS, initialSpeed } from './constants'
+import type { Door, DoorGroup, RoomGroup } from './types';
 import { computed, onMounted, ref, useTemplateRef, watchEffect } from 'vue'
 import { DRACOLoader, GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 // import Stats from "three/examples/jsm/libs/stats.module.js";
 import gsap from "gsap";
-import { POSITIONS, initialSpeed } from './constants'
-import type { Door, DoorGroup, RoomGroup } from './types';
 
-
-// TODO
-// 1. Clean up
-// 2. Restart game [DONE]
-// 3. count door [DONE]
-// 4. Sphere not copying in the beginning [DONE]
-// 5. Speed really slow [DONE]
-// 6. object
-// 7. ending cat[DONE]
 
 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
