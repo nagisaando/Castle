@@ -40,7 +40,7 @@ const POSITIONS = {
 
 // debug
 // const gui = new GUI();
-const stats = new Stats()
+// const stats = new Stats()
 
 /**
  * Types
@@ -67,6 +67,8 @@ const canvas = useTemplateRef('canvas')
 // Gameover
 let gameOver = ref(false)
 const gameStart = ref(false)
+const loadingPercentage = ref(0);
+const assetsLoaded = ref(false);
 
 
 
@@ -82,14 +84,14 @@ scene.background = new THREE.Color().setHex(0x112233);
 // Loaders
 const gltfLoader = new GLTFLoader()
 
-function loadModel(url: string): Promise<THREE.Group> {
+function loadModel(url: string, onProgress: (progress: number) => void): Promise<THREE.Group> {
   return new Promise((resolve, reject) => {
     gltfLoader.load(url, (gltf) => {
       resolve(gltf.scene)
     },
-      (_xhl) => {
-        // const percentage = (xhl.loaded / xhl.total * 100).toFixed(0)
-        // console.log(`Loading: ${percentage}%`)
+      (xhr) => {
+        const percentage = (xhr.loaded / xhr.total * 100);
+        onProgress(percentage);
       },
       (err) => reject(err)
     )
@@ -616,7 +618,7 @@ function tick(
   renderer: THREE.WebGLRenderer,
   camera: THREE.PerspectiveCamera,
   controls: OrbitControls,
-  stats: Stats
+  // stats: Stats
 ) {
   const clock = new THREE.Clock()
 
@@ -676,7 +678,7 @@ function tick(
     renderer.render(scene, camera)
 
     // debug
-    stats.update()
+    // stats.update()
 
     // Call tick again on the next frame
     window.requestAnimationFrame(animate)
@@ -965,11 +967,19 @@ function startGame() {
   }, 6000)
 }
 
+const modelProgress = ref<number[]>([]);
+
+const totalProgress = computed(() => {
+  const sum = modelProgress.value.reduce((acc, curr) => acc + curr, 0);
+  return Math.floor(sum / modelProgress.value.length);
+});
+
+
 onMounted(async () => {
   if (!canvas.value) return
 
   // Debug
-  document.body.appendChild(stats.dom)
+  // document.body.appendChild(stats.dom)
 
 
   /**
@@ -1028,16 +1038,24 @@ onMounted(async () => {
   }
   window.addEventListener('resize', handleResize)
 
+  const modelsToLoad = [
+    '/model/left-door-nob/door.gltf',
+    '/model/right-door-nob/door.gltf',
+    '/model/castle/castle.gltf',
+    '/model/interior/interior.gltf',
+    '/model/tree-fake/tree-fake.gltf',
+    '/model/mouse/mouse.gltf',
+    '/model/shuriken/shuriken.gltf',
+  ];
 
-  const [doorLeftNobModelData, doorRightModelData, castle, room, fakeTree, mouse, shuriken] = await Promise.all([
-    loadModel('/model/left-door-nob/door.gltf'),
-    loadModel('/model/right-door-nob/door.gltf'),
-    loadModel('/model/castle/castle.gltf'),
-    loadModel('/model/interior/interior.gltf'),
-    loadModel('/model/tree-fake/tree-fake.gltf'),
-    loadModel('/model/mouse/mouse.gltf'),
-    loadModel('/model/shuriken/shuriken.gltf'),
-  ])
+
+  const [doorLeftNobModelData, doorRightModelData, castle, room, fakeTree, mouse, shuriken] = await Promise.all(
+    modelsToLoad.map((url, index) => loadModel(url, (progress) => {
+      modelProgress.value[index] = progress;
+    }))
+  );
+
+  assetsLoaded.value = true;
 
 
   const size = new THREE.Vector3()
@@ -1114,7 +1132,7 @@ onMounted(async () => {
 
 
   // Start game loop
-  tick(renderer, camera, controls, stats)
+  tick(renderer, camera, controls)
 
 
 
@@ -1284,7 +1302,10 @@ async function restartGame() {
   <canvas class="webgl" ref="canvas">
 
   </canvas>
-  <button v-if="showButton" @click="startGame" class="game-start">Game Start</button>
+  <div v-if="!assetsLoaded" class="loading-overlay">
+    <p>Loading... {{ totalProgress }}%</p>
+  </div>
+  <button v-if="assetsLoaded && showButton" @click="startGame" class="game-start">Game Start</button>
   <div class="info">
     <p class="distance">Distance: {{ Math.floor(distance) }}</p>
     <div class="key-info">
@@ -1316,6 +1337,15 @@ async function restartGame() {
   position: absolute;
   right: 2rem;
   bottom: 1rem;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 2rem;
 }
 
 button {
