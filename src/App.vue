@@ -4,6 +4,8 @@ import { computed, onMounted, ref, useTemplateRef, watchEffect } from 'vue'
 import { DRACOLoader, GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 // import Stats from "three/examples/jsm/libs/stats.module.js";
 import gsap from "gsap";
+import { POSITIONS, initialSpeed } from './constants'
+import type { Door, DoorGroup, RoomGroup } from './types';
 
 
 // TODO
@@ -17,45 +19,16 @@ import gsap from "gsap";
 
 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-const SIZES = {
-  FLOOR: { width: 2.5, height: 6 },
-  MOUSE: 0.2
-}
-const initialSpeed = 3.5
 let SPEED = initialSpeed
 const BASE_SPEED = initialSpeed
 let speedMultiplier = 1.0;
-
-const POSITIONS = {
-  DOOR_X_OFFSET: SIZES.FLOOR.width / 3,
-  DOOR_Y: 0.08,
-  MOUSE_Y: 0,
-  MOUSE_START_Z: 4,
-  MOUSE_X: 0.8,
-  CAMERA: { z: 8, y: 1.25, x: 0 },
-  CAMERA_TO_START: { z: 55, y: 40, x: 30 }
-}
 
 // debug
 // const gui = new GUI();
 // const stats = new Stats()
 
-/**
- * Types
- */
 
-type Door = {
-  obj: THREE.Group,
-  open: boolean,
-  boundingBox: THREE.Box3,
-  opened: boolean,
-}
 
-type DoorGroup = {
-  door1: Door,
-  door2: Door,
-  door3: Door
-}
 
 
 // Canvas
@@ -191,21 +164,7 @@ function updateMouseBoundingSphere() {
 
 
 
-type RoomGroup = {
-  doors: {
-    door1: Door,
-    door2: Door,
-    door3: Door,
-  },
-  roomModel: THREE.Group,
-  hide: boolean,
-  shuriken: {
-    obj: THREE.Group,
-    boundingBox: THREE.Box3,
-    show: boolean
-  }
 
-}
 
 let shurikenModel: THREE.Group;
 let doorLeftNobBoundingBox: THREE.Box3;
