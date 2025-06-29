@@ -103,8 +103,6 @@ gltfLoader.setDRACOLoader(dracoLoader)
  */
 
 const textureLoader = new THREE.TextureLoader()
-const tatamiColorTexture = textureLoader.load('/texture/tatami/Tatami_basecolor.png')
-tatamiColorTexture.colorSpace = THREE.SRGBColorSpace
 
 /**
  * Lights
