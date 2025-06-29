@@ -33,9 +33,9 @@ const POSITIONS = {
   MOUSE_START_Z: 4,
   MOUSE_X: 0.8,
   CAMERA: { z: 8, y: 1.25, x: 0 },
-  CAMERA_TO_START: { z: 55, y: 40, x: 30 }
+  // CAMERA_TO_START: { z: 55, y: 40, x: 30 }
   // CAMERA_TO_START: { z: 60, y: 60, x: 60 }
-  // CAMERA_TO_START: { z: 8, y: 1.25, x: 0 },
+  CAMERA_TO_START: { z: 8, y: 1.25, x: 0 },
 }
 
 // debug
@@ -359,10 +359,10 @@ function initRooms() {
 
 function setupControls(camera: THREE.PerspectiveCamera) {
   const controls = new OrbitControls(camera, canvas.value)
-  controls.enableDamping = true
-  controls.enableZoom = false;    // Disable zoom
-  controls.enablePan = false;     // Disable pan
-  controls.enableRotate = false;  // Disable manual rotation
+  // controls.enableDamping = true
+  // controls.enableZoom = false;    // Disable zoom
+  // controls.enablePan = false;     // Disable pan
+  // controls.enableRotate = false;  // Disable manual rotation
   return controls
 }
 
@@ -644,6 +644,8 @@ function tick(
     controls.autoRotate = false
 
     if (gameStart.value && !gameOver.value) {
+      if (castleModel)
+        castleModel.position.z += SPEED * deltaTime
 
       updateRoom(deltaTime)
       updateDistance(deltaTime)
@@ -798,9 +800,43 @@ function resetRoomGroup(roomGroup: RoomGroup) {
   roomGroup.hide = false
 }
 
+const catSound = new Audio('/sound/Blastwave_FX_CatMeow_SFXB.203.mp3')
+catSound.volume = 0.4
+catSound.playbackRate = 1.8
+function crashMouse(): Promise<void> {
+  return new Promise((resolve) => {
 
+    gsap.to(catFeetModel.position, {
+      z: 4.5,
+      x: mouseModel.position.x,
+      duration: 0.7,
+
+    })
+    gsap.to(catFeetModel.rotation, {
+      x: 0,
+      duration: 0.7,
+    })
+    setTimeout(() => {
+      catSound.play()
+    }, 700)
+    gsap.to(catFeetModel.position, {
+      y: 0.2,
+      duration: 0.3,
+      ease: "power4.inOut",
+      delay: 0.7,
+    })
+    gsap.to(mouseModel.scale, {
+      y: 0,
+      duration: 0.3,
+      ease: "power4.inOut",
+      delay: 0.7,
+      onComplete: resolve
+    })
+  })
+
+}
 const showGameOverMessage = ref(false)
-function checkCollisions(room: RoomGroup) {
+async function checkCollisions(room: RoomGroup) {
   if (Math.abs(room.doors.door1.obj.position.z - mouseModel.position.z) < 1) {
     const doorsToCheck = [room.doors.door1, room.doors.door2, room.doors.door3]
 
@@ -827,10 +863,12 @@ function checkCollisions(room: RoomGroup) {
 
     if (doorBoundingBoxes.some(boundBox => mouseBoundingSphere.intersectsBox(boundBox))) {
       gameOver.value = true
+      await crashMouse()
       showGameOverMessage.value = true
     }
   }
 }
+
 
 function handleDoorOpening(door: DoorGroup) {
   const openDoor = (doorPart: Door, xOffset: number) => {
@@ -911,6 +949,7 @@ scene.fog = new THREE.FogExp2('#112233', 0.015)
 
 let castleModel: THREE.Group | null
 let trees: THREE.Group[] = []
+let catFeetModel: THREE.Group;
 
 let camera: THREE.PerspectiveCamera
 let controls: OrbitControls
@@ -1046,14 +1085,22 @@ onMounted(async () => {
     '/model/tree-fake/tree-fake.gltf',
     '/model/mouse/mouse.gltf',
     '/model/shuriken/shuriken.gltf',
+    '/model/cat-feet/cat-feet.gltf',
   ];
 
 
-  const [doorLeftNobModelData, doorRightModelData, castle, room, fakeTree, mouse, shuriken] = await Promise.all(
+  const [doorLeftNobModelData, doorRightModelData, castle, room, fakeTree, mouse, shuriken, catFeet] = await Promise.all(
     modelsToLoad.map((url, index) => loadModel(url, (progress) => {
       modelProgress.value[index] = progress;
     }))
   );
+
+  catFeetModel = catFeet
+  catFeetModel.position.z = 8
+  catFeetModel.rotation.x = Math.PI / 8
+  catFeetModel.position.y = 0.7
+  scene.add(catFeetModel)
+
 
   assetsLoaded.value = true;
 
@@ -1160,8 +1207,11 @@ gameBackground.loop = true
 
 watchEffect(() => {
   if (gameStart.value) {
-    cleanUpSceneWhenGameStarts()
-    removeFloorTexture()
+    setTimeout(() => {
+      cleanUpSceneWhenGameStarts()
+      removeFloorTexture()
+    }, 500)
+
   }
   if (gameStart.value && gameOver.value) {
     gameBackground.pause()
@@ -1170,7 +1220,7 @@ watchEffect(() => {
 
 function moveRoomsToStartPlace(): Promise<void> {
   return new Promise((resolve) => {
-    const initialRoomPosition = -2.5
+    const initialRoomPosition = -0.8
     const firstRoomIndex = roomRecycleIndex.value
     const firstRoom = rooms.value[roomRecycleIndex.value];
     distance.value = 0
@@ -1285,8 +1335,29 @@ function removeFloorTexture() {
 
 async function restartGame() {
   showGameOverMessage.value = false
-  await moveRoomsToStartPlace()
+
   gameBackground.currentTime = 0
+
+  catSound.currentTime = 0
+
+  gsap.to(catFeetModel.position, {
+    z: 8,
+    x: Math.PI / 8,
+    y: 0.7,
+    duration: 2,
+
+  })
+  gsap.to(catFeetModel.rotation, {
+    x: 0,
+    duration: 2,
+  })
+  gsap.to(mouseModel.scale, {
+    y: 1,
+    duration: 2,
+  })
+
+  await moveRoomsToStartPlace()
+
   SPEED = initialSpeed
   speedMultiplier = 1.0
   gameOver.value = false
