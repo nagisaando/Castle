@@ -1380,7 +1380,6 @@ async function restartGame() {
   <div v-if="!assetsLoaded" class="loading-overlay">
     <p>Loading... {{ totalProgress }}%</p>
   </div>
-
   <div v-if="assetsLoaded && showButton" class="game-start">
     <button @click="startGame">Game Start</button>
     <div class="key-info">
@@ -1401,15 +1400,13 @@ async function restartGame() {
 
 
   <p class="credit">Sound by <a href="https://www.zapsplat.com/" target="_blank">ZapSplat</a></p>
-
   <div v-if="showGameOverMessage" class="game-over">
     <p>Game over...</p>
     <button @click="restartGame">try again</button>
   </div>
 
 
-  <!-- this is ui for mobile -->
-  <div class="mobile-handle-buttons" v-if="gameStart && !gameOver">
+  <div class="handle-buttons" v-if="gameStart && !gameOver">
     <button @click="handleLeftMovement">&#9664;</button>
     <button @click="handleJump">🔼</button>
     <button @click="handleRightMovement"> &#9654;</button>
@@ -1419,21 +1416,154 @@ async function restartGame() {
 </template>
 
 <style>
-/* Variables */
-:root {
-  --text-color: white;
-  --font-size-l: 2rem;
-  --font-size-m: 1.5rem;
-  --font-size-s: 1rem;
-  --spacing-m: 1rem;
-  --spacing-l: 2rem;
+.credit {
+  position: absolute;
+  right: 2rem;
+  bottom: 1rem;
 }
 
-/* Base Styles */
+.loading-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 2rem;
+}
+
+button {
+  font-size: 2rem;
+  border: 2px white solid;
+}
+
+.game-start {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  .key-info {
+    font-size: 1.3rem;
+    text-align: left;
+    margin-top: 2rem;
+    color: white;
+
+    p {
+      padding: 1rem 0;
+    }
+  }
+}
+
+.key {
+  border: 1px solid white;
+  padding: 1rem 2rem;
+  margin-right: 1rem;
+}
+
+.key-info {
+  font-size: 1rem;
+
+}
+
+.game-over {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  p {
+
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+    color: black;
+    font-weight: 500;
+
+
+  }
+
+  button {
+    text-wrap: nowrap;
+  }
+}
+
+.info {
+  position: absolute;
+  right: 2rem;
+  top: 1rem;
+  color: white;
+  text-align: right;
+
+  .distance {
+    font-size: 2rem;
+  }
+
+  .key-info {
+    text-align: left;
+    color: white;
+
+    p {
+      padding: 0.2rem 0;
+    }
+
+    .key {
+      border: 1px solid white;
+      padding: 0.2rem 0.4rem;
+      margin-right: 0.6rem;
+    }
+  }
+
+
+
+}
+
+@media only screen and (max-width: 500px) {
+  button {
+    font-size: 1rem;
+    border: 2px white solid;
+  }
+
+  .game-over {
+    p {
+      font-size: 1.5rem;
+    }
+  }
+
+  .info {
+    .distance {
+      font-size: 1rem;
+    }
+
+
+
+
+  }
+
+  .key-info {
+    display: none
+  }
+
+
+
+
+
+  .handle-buttons {
+    position: absolute;
+    bottom: 10%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+
+
+
+  canvas {
+    overflow: scroll;
+  }
+}
+
 * {
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
 }
 
 html,
@@ -1447,127 +1577,5 @@ body {
   top: 0;
   left: 0;
   outline: none;
-}
-
-/* UI Elements */
-button {
-  font-size: var(--font-size-l);
-  border: 2px solid var(--text-color);
-  background-color: transparent;
-  color: var(--text-color);
-}
-
-.key {
-  border: 1px solid var(--text-color);
-  padding: var(--spacing-m) var(--spacing-l);
-  margin-right: var(--spacing-m);
-}
-
-/* Layout & Containers */
-.credit {
-  position: absolute;
-  right: var(--spacing-l);
-  bottom: var(--spacing-m);
-  color: var(--text-color);
-}
-
-.info {
-  position: absolute;
-  right: var(--spacing-l);
-  top: var(--spacing-m);
-  color: var(--text-color);
-  text-align: right;
-}
-
-.info .distance {
-  font-size: var(--font-size-l);
-}
-
-.info .key-info {
-  text-align: left;
-  color: var(--text-color);
-}
-
-.info .key-info p {
-  padding: 0.2rem 0;
-}
-
-.info .key-info .key {
-  padding: 0.2rem 0.4rem;
-  margin-right: 0.6rem;
-}
-
-/* Overlays */
-.loading-overlay,
-.game-start,
-.game-over {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-}
-
-.loading-overlay {
-  color: var(--text-color);
-  font-size: var(--font-size-l);
-}
-
-.game-start .key-info {
-  font-size: 1.3rem;
-  text-align: left;
-  margin-top: var(--spacing-l);
-  color: var(--text-color);
-}
-
-.game-start .key-info p {
-  padding: var(--spacing-m) 0;
-}
-
-.game-over p {
-  font-size: 3rem;
-  margin-bottom: 0.5rem;
-  color: black;
-  font-weight: 500;
-}
-
-.game-over button {
-  text-wrap: nowrap;
-}
-
-/* Mobile Specific */
-.mobile-handle-buttons {
-  display: none;
-  /* Hidden by default */
-}
-
-@media only screen and (max-width: 500px) {
-  button {
-    font-size: var(--font-size-m);
-  }
-
-  .game-over p {
-    font-size: var(--font-size-m);
-  }
-
-  .info .distance {
-    font-size: var(--font-size-m);
-  }
-
-  .key-info {
-    display: none;
-  }
-
-  .mobile-handle-buttons {
-    display: block;
-    position: absolute;
-    bottom: 10%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-  }
-
-  .mobile-handle-buttons button {
-    padding: 1rem;
-  }
 }
 </style>
