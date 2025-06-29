@@ -2,7 +2,7 @@
 import * as THREE from "three"
 import { computed, onMounted, ref, useTemplateRef, watchEffect } from 'vue'
 import { DRACOLoader, GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
-import Stats from "three/examples/jsm/libs/stats.module.js";
+// import Stats from "three/examples/jsm/libs/stats.module.js";
 import gsap from "gsap";
 
 
@@ -32,8 +32,6 @@ const POSITIONS = {
   MOUSE_X: 0.8,
   CAMERA: { z: 8, y: 1.25, x: 0 },
   CAMERA_TO_START: { z: 55, y: 40, x: 30 }
-  // CAMERA_TO_START: { z: 60, y: 60, x: 60 }
-  // CAMERA_TO_START: { z: 8, y: 1.25, x: 0 },
 }
 
 // debug
@@ -65,7 +63,6 @@ const canvas = useTemplateRef('canvas')
 // Gameover
 let gameOver = ref(false)
 const gameStart = ref(false)
-const loadingPercentage = ref(0);
 const assetsLoaded = ref(false);
 
 
