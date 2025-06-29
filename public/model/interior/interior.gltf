@@ -3,75 +3,73 @@
     "generator": "Khronos glTF Blender I/O v4.4.56",
     "version": "2.0"
   },
-  "extensionsUsed": ["KHR_draco_mesh_compression", "KHR_texture_transform"],
-  "extensionsRequired": ["KHR_draco_mesh_compression", "KHR_texture_transform"],
+  "extensionsUsed": ["KHR_draco_mesh_compression"],
+  "extensionsRequired": ["KHR_draco_mesh_compression"],
   "scene": 0,
   "scenes": [
     {
       "name": "Scene",
-      "nodes": [0, 1, 2, 3, 4, 5]
+      "nodes": [0, 1, 2, 3, 4]
     }
   ],
   "nodes": [
     {
       "mesh": 0,
+      "name": "Plane.181",
+      "scale": [1.3629250526428223, 1.0578601360321045, 3],
+      "translation": [
+        0.00018090568482875824, 0.0010544955730438232, 3.0012049674987793
+      ]
+    },
+    {
+      "mesh": 1,
       "name": "Plane.145",
       "rotation": [0.7071068286895752, 0, 0, 0.7071068286895752],
       "translation": [0, 1.8140721321105957, 0]
     },
     {
-      "mesh": 1,
+      "mesh": 2,
       "name": "Plane.146",
       "translation": [
         -0.0016315175453200936, 2.1434121131896973, 3.0051987171173096
       ]
     },
     {
-      "mesh": 2,
+      "mesh": 3,
       "name": "Plane.147",
       "translation": [0, 0.07259809970855713, 0]
     },
     {
-      "mesh": 3,
-      "name": "Plane.148",
-      "translation": [
-        0.00018090568482875824, 0.0010544955730438232, 3.0012049674987793
-      ]
-    },
-    {
       "mesh": 4,
-      "name": "Kamoi.006",
+      "name": "Nageshi.004",
       "rotation": [0, 0.7071068286895752, 0, 0.7071068286895752],
-      "translation": [
-        -1.3125003576278687, 0.8105469942092896, 3.002810001373291
-      ]
-    },
-    {
-      "mesh": 5,
-      "name": "Kamoi.007",
-      "rotation": [0, -0.7071068286895752, 0, 0.7071068286895752],
-      "translation": [1.3094600439071655, 0.8105469942092896, 3.002810001373291]
+      "scale": [1, 1.0005557537078857, 1],
+      "translation": [-1.29547917842865, 0.871428906917572, 2.9956672191619873]
     }
   ],
   "materials": [
     {
       "doubleSided": true,
-      "name": "Material.011",
+      "name": "tatami-ceiling-new",
       "normalTexture": {
-        "index": 0
+        "index": 0,
+        "texCoord": 1
       },
       "pbrMetallicRoughness": {
         "baseColorTexture": {
-          "index": 1
+          "index": 1,
+          "texCoord": 1
         },
+        "metallicFactor": 0,
         "metallicRoughnessTexture": {
-          "index": 2
+          "index": 2,
+          "texCoord": 1
         }
       }
     },
     {
       "doubleSided": true,
-      "name": "tatami-ceiling",
+      "name": "Material.011",
       "normalTexture": {
         "index": 3
       },
@@ -79,7 +77,6 @@
         "baseColorTexture": {
           "index": 4
         },
-        "metallicFactor": 0,
         "metallicRoughnessTexture": {
           "index": 5
         }
@@ -87,55 +84,38 @@
     },
     {
       "doubleSided": true,
-      "name": "Wood.001",
+      "name": "tatami-ceiling-new",
       "normalTexture": {
-        "extensions": {
-          "KHR_texture_transform": {
-            "offset": [0, -1.5],
-            "scale": [2.5, 2.5]
-          }
-        },
-        "index": 6,
-        "texCoord": 1
+        "index": 0,
+        "texCoord": 2
       },
       "pbrMetallicRoughness": {
         "baseColorTexture": {
-          "extensions": {
-            "KHR_texture_transform": {
-              "offset": [0, -1.5],
-              "scale": [2.5, 2.5]
-            }
-          },
-          "index": 7,
-          "texCoord": 1
+          "index": 1,
+          "texCoord": 2
         },
         "metallicFactor": 0,
         "metallicRoughnessTexture": {
-          "extensions": {
-            "KHR_texture_transform": {
-              "offset": [0, -1.5],
-              "scale": [2.5, 2.5]
-            }
-          },
-          "index": 8,
-          "texCoord": 1
+          "index": 2,
+          "texCoord": 2
         }
       }
     },
     {
       "doubleSided": true,
-      "name": "Material.015",
+      "name": "Material.013",
       "normalTexture": {
-        "index": 9,
+        "index": 6,
         "texCoord": 2
       },
       "pbrMetallicRoughness": {
         "baseColorTexture": {
-          "index": 10,
+          "index": 7,
           "texCoord": 2
         },
+        "metallicFactor": 0,
         "metallicRoughnessTexture": {
-          "index": 11,
+          "index": 8,
           "texCoord": 2
         }
       }
@@ -143,13 +123,14 @@
   ],
   "meshes": [
     {
-      "name": "Plane.007",
+      "name": "Plane.203",
       "primitives": [
         {
           "attributes": {
             "POSITION": 0,
             "NORMAL": 1,
-            "TEXCOORD_0": 2
+            "TEXCOORD_0": 2,
+            "TEXCOORD_1": 3
           },
           "extensions": {
             "KHR_draco_mesh_compression": {
@@ -157,24 +138,25 @@
               "attributes": {
                 "POSITION": 0,
                 "NORMAL": 1,
-                "TEXCOORD_0": 2
+                "TEXCOORD_0": 2,
+                "TEXCOORD_1": 3
               }
             }
           },
-          "indices": 3,
+          "indices": 4,
           "material": 0,
           "mode": 4
         }
       ]
     },
     {
-      "name": "Plane.008",
+      "name": "Plane.007",
       "primitives": [
         {
           "attributes": {
-            "POSITION": 4,
-            "NORMAL": 5,
-            "TEXCOORD_0": 6
+            "POSITION": 5,
+            "NORMAL": 6,
+            "TEXCOORD_0": 7
           },
           "extensions": {
             "KHR_draco_mesh_compression": {
@@ -186,21 +168,21 @@
               }
             }
           },
-          "indices": 7,
+          "indices": 8,
           "material": 1,
           "mode": 4
         }
       ]
     },
     {
-      "name": "Plane.009",
+      "name": "Plane.008",
       "primitives": [
         {
           "attributes": {
-            "POSITION": 8,
-            "NORMAL": 9,
-            "TEXCOORD_0": 10,
-            "TEXCOORD_1": 11
+            "POSITION": 9,
+            "NORMAL": 10,
+            "TEXCOORD_0": 11,
+            "TEXCOORD_1": 12
           },
           "extensions": {
             "KHR_draco_mesh_compression": {
@@ -213,20 +195,22 @@
               }
             }
           },
-          "indices": 12,
-          "material": 2,
+          "indices": 13,
+          "material": 0,
           "mode": 4
         }
       ]
     },
     {
-      "name": "Plane.010",
+      "name": "Plane.009",
       "primitives": [
         {
           "attributes": {
-            "POSITION": 13,
-            "NORMAL": 14,
-            "TEXCOORD_0": 15
+            "POSITION": 14,
+            "NORMAL": 15,
+            "TEXCOORD_0": 16,
+            "TEXCOORD_1": 17,
+            "TEXCOORD_2": 18
           },
           "extensions": {
             "KHR_draco_mesh_compression": {
@@ -234,26 +218,28 @@
               "attributes": {
                 "POSITION": 0,
                 "NORMAL": 1,
-                "TEXCOORD_0": 2
+                "TEXCOORD_0": 2,
+                "TEXCOORD_1": 3,
+                "TEXCOORD_2": 4
               }
             }
           },
-          "indices": 16,
-          "material": 1,
+          "indices": 19,
+          "material": 2,
           "mode": 4
         }
       ]
     },
     {
-      "name": "Cube.036",
+      "name": "Cube.079",
       "primitives": [
         {
           "attributes": {
-            "POSITION": 17,
-            "NORMAL": 18,
-            "TEXCOORD_0": 19,
-            "TEXCOORD_1": 20,
-            "TEXCOORD_2": 21
+            "POSITION": 20,
+            "NORMAL": 21,
+            "TEXCOORD_0": 22,
+            "TEXCOORD_1": 23,
+            "TEXCOORD_2": 24
           },
           "extensions": {
             "KHR_draco_mesh_compression": {
@@ -267,36 +253,7 @@
               }
             }
           },
-          "indices": 22,
-          "material": 3,
-          "mode": 4
-        }
-      ]
-    },
-    {
-      "name": "Cube.047",
-      "primitives": [
-        {
-          "attributes": {
-            "POSITION": 23,
-            "NORMAL": 24,
-            "TEXCOORD_0": 25,
-            "TEXCOORD_1": 26,
-            "TEXCOORD_2": 27
-          },
-          "extensions": {
-            "KHR_draco_mesh_compression": {
-              "bufferView": 5,
-              "attributes": {
-                "POSITION": 0,
-                "NORMAL": 1,
-                "TEXCOORD_0": 2,
-                "TEXCOORD_1": 3,
-                "TEXCOORD_2": 4
-              }
-            }
-          },
-          "indices": 22,
+          "indices": 25,
           "material": 3,
           "mode": 4
         }
@@ -339,21 +296,24 @@
     {
       "sampler": 0,
       "source": 8
-    },
-    {
-      "sampler": 0,
-      "source": 9
-    },
-    {
-      "sampler": 0,
-      "source": 10
-    },
-    {
-      "sampler": 0,
-      "source": 11
     }
   ],
   "images": [
+    {
+      "mimeType": "image/jpeg",
+      "name": "tatami-ceiling-normal",
+      "uri": "tatami-ceiling-normal.jpg"
+    },
+    {
+      "mimeType": "image/jpeg",
+      "name": "tatami-ceiling-color",
+      "uri": "tatami-ceiling-color.jpg"
+    },
+    {
+      "mimeType": "image/jpeg",
+      "name": "tatami-ceiling-roughness",
+      "uri": "tatami-ceiling-roughness.jpg"
+    },
     {
       "mimeType": "image/jpeg",
       "name": "door-top-normal",
@@ -365,39 +325,9 @@
       "uri": "door-top-color.jpg"
     },
     {
-      "mimeType": "image/png",
+      "mimeType": "image/jpeg",
       "name": "door-top-metalness-door-top-roughness",
-      "uri": "door-top-metalness-door-top-roughness.png"
-    },
-    {
-      "mimeType": "image/jpeg",
-      "name": "Tatami-ceiling-normal",
-      "uri": "Tatami-ceiling-normal.jpg"
-    },
-    {
-      "mimeType": "image/jpeg",
-      "name": "Tatami-ceiling-color",
-      "uri": "Tatami-ceiling-color.jpg"
-    },
-    {
-      "mimeType": "image/png",
-      "name": "Tatami-ceiling-roughness",
-      "uri": "Tatami-ceiling-roughness.png"
-    },
-    {
-      "mimeType": "image/jpeg",
-      "name": "Wood02_normal",
-      "uri": "Wood02_normal.jpg"
-    },
-    {
-      "mimeType": "image/jpeg",
-      "name": "Wood02_basecolor",
-      "uri": "Wood02_basecolor.jpg"
-    },
-    {
-      "mimeType": "image/jpeg",
-      "name": "Wood02_PBRset",
-      "uri": "Wood02_PBRset.jpg"
+      "uri": "door-top-metalness-door-top-roughness.jpg"
     },
     {
       "mimeType": "image/jpeg",
@@ -411,26 +341,53 @@
     },
     {
       "mimeType": "image/jpeg",
-      "name": "side-door-metalness_roughness",
-      "uri": "side-door-metalness_roughness.jpg"
+      "name": "side-door-roughness",
+      "uri": "side-door-roughness.jpg"
     }
   ],
   "accessors": [
     {
       "componentType": 5126,
-      "count": 16980,
+      "count": 24,
+      "max": [1, 0.06732647866010666, 1],
+      "min": [-1, 0, -1],
+      "type": "VEC3"
+    },
+    {
+      "componentType": 5126,
+      "count": 24,
+      "type": "VEC3"
+    },
+    {
+      "componentType": 5126,
+      "count": 24,
+      "type": "VEC2"
+    },
+    {
+      "componentType": 5126,
+      "count": 24,
+      "type": "VEC2"
+    },
+    {
+      "componentType": 5123,
+      "count": 36,
+      "type": "SCALAR"
+    },
+    {
+      "componentType": 5126,
+      "count": 20318,
       "max": [1.2568767070770264, 0.09238486737012863, 0.30949658155441284],
       "min": [-1.2568767070770264, -0.09515471756458282, -0.30949658155441284],
       "type": "VEC3"
     },
     {
       "componentType": 5126,
-      "count": 16980,
+      "count": 20318,
       "type": "VEC3"
     },
     {
       "componentType": 5126,
-      "count": 16980,
+      "count": 20318,
       "type": "VEC2"
     },
     {
@@ -449,6 +406,11 @@
       "componentType": 5126,
       "count": 9735,
       "type": "VEC3"
+    },
+    {
+      "componentType": 5126,
+      "count": 9735,
+      "type": "VEC2"
     },
     {
       "componentType": 5126,
@@ -483,122 +445,73 @@
       "type": "VEC2"
     },
     {
+      "componentType": 5126,
+      "count": 96,
+      "type": "VEC2"
+    },
+    {
       "componentType": 5123,
       "count": 156,
       "type": "SCALAR"
     },
     {
       "componentType": 5126,
-      "count": 24,
-      "max": [1.3629250526428223, 0.07122178375720978, 3],
-      "min": [-1.3629250526428223, 0, -3],
+      "count": 5928,
+      "max": [2.9997053146362305, 1.2511568069458008, 2.6571292877197266],
+      "min": [-2.9997119903564453, -0.7970376014709473, -0.06580907106399536],
       "type": "VEC3"
     },
     {
       "componentType": 5126,
-      "count": 24,
+      "count": 5928,
       "type": "VEC3"
     },
     {
       "componentType": 5126,
-      "count": 24,
+      "count": 5928,
+      "type": "VEC2"
+    },
+    {
+      "componentType": 5126,
+      "count": 5928,
+      "type": "VEC2"
+    },
+    {
+      "componentType": 5126,
+      "count": 5928,
       "type": "VEC2"
     },
     {
       "componentType": 5123,
-      "count": 36,
+      "count": 11880,
       "type": "SCALAR"
-    },
-    {
-      "componentType": 5126,
-      "count": 75530,
-      "max": [2.9999704360961914, 1.3127200603485107, 0.05425510182976723],
-      "min": [-3.0000298023223877, -0.73591148853302, -0.05074490234255791],
-      "type": "VEC3"
-    },
-    {
-      "componentType": 5126,
-      "count": 75530,
-      "type": "VEC3"
-    },
-    {
-      "componentType": 5126,
-      "count": 75530,
-      "type": "VEC2"
-    },
-    {
-      "componentType": 5126,
-      "count": 75530,
-      "type": "VEC2"
-    },
-    {
-      "componentType": 5126,
-      "count": 75530,
-      "type": "VEC2"
-    },
-    {
-      "componentType": 5125,
-      "count": 190788,
-      "type": "SCALAR"
-    },
-    {
-      "componentType": 5126,
-      "count": 75530,
-      "max": [2.9999704360961914, 1.3127200603485107, 0.05425510182976723],
-      "min": [-3.0000298023223877, -0.73591148853302, -0.05074490234255791],
-      "type": "VEC3"
-    },
-    {
-      "componentType": 5126,
-      "count": 75530,
-      "type": "VEC3"
-    },
-    {
-      "componentType": 5126,
-      "count": 75530,
-      "type": "VEC2"
-    },
-    {
-      "componentType": 5126,
-      "count": 75530,
-      "type": "VEC2"
-    },
-    {
-      "componentType": 5126,
-      "count": 75530,
-      "type": "VEC2"
     }
   ],
   "bufferViews": [
     {
       "buffer": 0,
-      "byteLength": 62883,
+      "byteLength": 343,
       "byteOffset": 0
     },
     {
       "buffer": 0,
-      "byteLength": 47785,
-      "byteOffset": 62884
+      "byteLength": 81668,
+      "byteOffset": 344
     },
     {
       "buffer": 0,
-      "byteLength": 804,
-      "byteOffset": 110672
+      "byteLength": 60913,
+      "byteOffset": 82012
     },
     {
       "buffer": 0,
-      "byteLength": 306,
-      "byteOffset": 111476
+      "byteLength": 1034,
+      "byteOffset": 142928
     },
     {
       "buffer": 0,
-      "byteLength": 401899,
-      "byteOffset": 111784
-    },
-    {
-      "buffer": 0,
-      "byteLength": 401899,
-      "byteOffset": 513684
+      "byteLength": 30502,
+      "byteOffset": 143964
     }
   ],
   "samplers": [
@@ -609,7 +522,7 @@
   ],
   "buffers": [
     {
-      "byteLength": 915584,
+      "byteLength": 174468,
       "uri": "interior.bin"
     }
   ]
