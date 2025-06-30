@@ -2,7 +2,7 @@
 import * as THREE from "three"
 import { POSITIONS, initialSpeed } from './constants'
 import type { Door, DoorGroup, RoomGroup } from './types';
-import { computed, onMounted, ref, useTemplateRef, watchEffect } from 'vue'
+import { onMounted, useTemplateRef, watchEffect } from 'vue'
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
 import { useThreeSetup } from './composables/useThreeSetup'
 import { useModelLoader } from './composables/useModelLoader'
