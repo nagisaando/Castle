@@ -24,7 +24,6 @@ defineEmits<Emits>()
 const textColor = 'white'
 const fontSizeL = '2rem'
 const fontSizeM = '1.5rem'
-const fontSizeS = '1rem'
 const spacingM = '1rem'
 const spacingL = '2rem'
 </script>
