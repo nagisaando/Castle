@@ -10,6 +10,7 @@ import { useModelInitialization } from './composables/useModelInitialization'
 import { useGameState } from './composables/useGameState'
 import { useAudioManager } from './composables/useAudioManager'
 import { useKeyboardControls, type MouseAnimationParams } from './composables/useKeyboardControls'
+import { useEnvironment } from './composables/useEnvironment'
 
 import gsap from "gsap";
 
@@ -77,6 +78,14 @@ const {
   playJumpSound
 )
 
+// Initialize environment setup
+const {
+  createFloor,
+  setupSceneFog,
+  cleanupEnvironment,
+  removeFloorTextures
+} = useEnvironment()
+
 
 
 /**
@@ -94,7 +103,6 @@ const {
  * Texture
  */
 
-const textureLoader = new THREE.TextureLoader()
 
 // Lights will be created by useThreeSetup composable
 
@@ -646,15 +654,11 @@ let castleModel: THREE.Group | null
 let trees: THREE.Group[] = []
 let catFeetModel: THREE.Group;
 
-// Floor and textures will be initialized in onMounted
+// Floor will be initialized in onMounted
 let floor: THREE.Mesh<
   THREE.PlaneGeometry,
   THREE.MeshStandardMaterial | THREE.MeshBasicMaterial
 >
-let alphaTexture: THREE.Texture
-let floorColorTexture: THREE.Texture
-let floorNormalTexture: THREE.Texture
-let floorARMTexture: THREE.Texture
 
 let camera: THREE.PerspectiveCamera
 let controls: OrbitControls
@@ -729,40 +733,9 @@ onMounted(async () => {
 
   // Keyboard controls will be set up after mouse model is loaded
 
-  // Create floor
-  alphaTexture = textureLoader.load('/texture/alpha.jpg')
-  floorColorTexture = textureLoader.load('/texture/ground/brown_mud_leaves_01_diff_1k.jpg')
-  floorColorTexture.colorSpace = THREE.SRGBColorSpace
-  floorNormalTexture = textureLoader.load('/texture/ground/brown_mud_leaves_01_nor_gl_1k.png')
-  floorARMTexture = textureLoader.load('/texture/ground/brown_mud_leaves_01_arm_1k.jpg')
-
-  floorColorTexture.repeat.set(10, 10)
-  floorARMTexture.repeat.set(10, 10)
-  floorNormalTexture.repeat.set(10, 10)
-
-  floorColorTexture.wrapS = THREE.RepeatWrapping
-  floorColorTexture.wrapT = THREE.RepeatWrapping
-
-  floorARMTexture.wrapS = THREE.RepeatWrapping
-  floorARMTexture.wrapT = THREE.RepeatWrapping
-
-  floorNormalTexture.wrapS = THREE.RepeatWrapping
-  floorNormalTexture.wrapT = THREE.RepeatWrapping
-
-  floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80),
-    new THREE.MeshStandardMaterial({
-      alphaMap: alphaTexture,
-      transparent: true,
-      map: floorColorTexture,
-      aoMap: floorARMTexture,
-      roughnessMap: floorARMTexture,
-      metalnessMap: floorARMTexture,
-      normalMap: floorNormalTexture
-    }))
-  floor.rotation.x = -Math.PI / 2
-  scene.add(floor)
-
-  scene.fog = new THREE.FogExp2('#112233', 0.015)
+  // Create floor and setup environment
+  floor = createFloor(scene)
+  setupSceneFog(scene)
 
   const isMobile = window.matchMedia("(max-width: 500px)").matches;
 
@@ -839,18 +812,6 @@ onMounted(async () => {
 
 })
 
-function cleanUpSceneWhenGameStarts() {
-  if (castleModel) {
-    scene.remove(castleModel);
-    castleModel = null; // Allow garbage collection
-  }
-  trees.forEach(tree => {
-    scene.remove(tree)
-    trees = []
-  })
-
-  scene.fog = null
-}
 
 // https://www.zapsplat.com/music/game-music-action-retro-8-bit-style-bouncy-hard-dance-track-with-electronic-synths-and-drums/
 // need credit page
@@ -859,8 +820,10 @@ function cleanUpSceneWhenGameStarts() {
 watchEffect(() => {
   if (gameStart.value) {
     setTimeout(() => {
-      cleanUpSceneWhenGameStarts()
-      removeFloorTexture()
+      cleanupEnvironment(scene, castleModel, trees)
+      castleModel = null // Allow garbage collection
+      trees = []
+      removeFloorTextures(floor)
     }, 500)
 
   }
@@ -945,44 +908,6 @@ function moveRoomsToStartPlace(): Promise<void> {
 
 }
 
-function removeFloorTexture() {
-  floor.material.alphaMap?.dispose()
-  floor.material.alphaMap = null
-
-  floor.material.map?.dispose()
-  floor.material.map = null
-
-  floor.material.aoMap?.dispose()
-  floor.material.aoMap = null
-
-  // Type guard for MeshStandardMaterial
-  if ('roughnessMap' in floor.material) {
-    // TypeScript now knows this is MeshStandardMaterial
-    floor.material.roughnessMap?.dispose()
-    floor.material.roughnessMap = null
-
-    floor.material.metalnessMap?.dispose()
-    floor.material.metalnessMap = null
-
-    floor.material.normalMap?.dispose()
-    floor.material.normalMap = null
-  }
-
-
-  floorARMTexture.dispose()
-  floorNormalTexture.dispose()
-  floorColorTexture.dispose()
-  alphaTexture.dispose()
-
-  floor.material.dispose()
-  floor.geometry.dispose()
-
-  floor.material = new THREE.MeshBasicMaterial({
-    color: '#787464',
-  })
-
-  floor.material.needsUpdate = true
-}
 
 async function restartGame() {
   showGameOverMessage.value = false
