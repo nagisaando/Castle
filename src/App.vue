@@ -12,6 +12,7 @@ import { useAudioManager } from './composables/useAudioManager'
 import { useKeyboardControls, type MouseAnimationParams } from './composables/useKeyboardControls'
 import { useEnvironment } from './composables/useEnvironment'
 import { useCharacterManager } from './composables/useCharacterManager'
+import { useRoomManager } from './composables/useRoomManager'
 
 import gsap from "gsap";
 
@@ -93,6 +94,13 @@ const {
   updateMouseBoundingSphere
 } = useCharacterManager()
 
+// Initialize room manager
+const {
+  rooms,
+  getNextRoomPosition,
+  initRooms: initRoomsFromManager
+} = useRoomManager(roomBufferSize, roomRecycleIndex, lastRoomIndex)
+
 
 // Mouse
 
@@ -114,138 +122,18 @@ let doorLeftNobBoundingBox: THREE.Box3;
 let doorRightNobBoundingBox: THREE.Box3;
 let shurikenBoundingBox: THREE.Box3;
 
-const rooms = ref<RoomGroup[]>(new Array(roomBufferSize))
 
 let roomModelSize: THREE.Vector3
 let roomModel: THREE.Group;
 
-// Room position computed property
-const lastRoomPosition = computed(() => {
-  return rooms.value[lastRoomIndex.value]?.roomModel.position.z ?? 0
-})
 
 
-function getNextRoomPosition() {
-  if (lastRoomIndex.value === -1) return -3; // Initial position
-  return lastRoomPosition.value - roomModelSize.z + 0.1
-}
 
 let doorLeftNobModel: THREE.Group;
 let doorRightNobModel: THREE.Group;
 
 
-function createRoom(index: number) {
-  const room = roomModel.clone()
-  const door1 = doorLeftNobModel.clone()
-  // This gets the master blueprint for the door's shape. This blueprint is centered at the origin(0, 0, 0) and has no rotation.It just defines the size.
-  door1.userData.templateBoundingBox = doorLeftNobBoundingBox;
-  const door2 = doorLeftNobModel.clone()
-  door2.userData.templateBoundingBox = doorLeftNobBoundingBox;
-  const door3 = doorRightNobModel.clone()
-  door3.userData.templateBoundingBox = doorRightNobBoundingBox;
 
-  const shuriken = shurikenModel.clone()
-  shuriken.userData.templateBoundingBox = shurikenBoundingBox;
-
-
-
-
-  if (index !== 0) {
-    room.visible = false
-    door1.visible = false
-    door2.visible = false
-    door3.visible = false
-    shuriken.visible = false
-  }
-
-  const zPosition = getNextRoomPosition()
-
-  room.position.set(0, 0, zPosition);
-
-  door1.position.y = POSITIONS.DOOR_Y
-
-  door1!.position.z = zPosition + 0.03
-  door1!.position.x = -POSITIONS.DOOR_X_OFFSET
-
-  door2.position.y = POSITIONS.DOOR_Y
-  door2!.position.z = zPosition - 0.02
-
-  door3.position.y = POSITIONS.DOOR_Y
-  door3!.position.z = zPosition + 0.03
-  door3!.position.x = POSITIONS.DOOR_X_OFFSET
-
-
-  scene.add(room)
-  scene.add(door1)
-  scene.add(door2)
-  scene.add(door3)
-  scene.add(shuriken)
-
-  const roomGroup: RoomGroup = {
-    doors: {
-      door1: {
-        obj: door1,
-        open: false,
-        boundingBox: doorLeftNobBoundingBox.clone(),
-        opened: false
-
-      },
-      door2: {
-        obj: door2,
-        open: false,
-        boundingBox: doorLeftNobBoundingBox.clone(),
-        opened: false
-      },
-      door3: {
-        obj: door3,
-        open: false,
-        boundingBox: doorRightNobBoundingBox.clone(),
-        opened: false
-      },
-    },
-    shuriken: {
-      obj: shuriken,
-      boundingBox: shurikenBoundingBox.clone(),
-      show: false
-    },
-    hide: false,
-    roomModel: room,
-  }
-
-  // Randomly open one door
-  const doorsToOpen = ['door1', 'door2', 'door3'] as const
-  const randomDoor = doorsToOpen[Math.floor(Math.random() * 3)]
-  roomGroup.doors[randomDoor].open = true
-
-  // place the shuriken behind the door to open
-
-  shuriken.position.z = roomGroup.doors[randomDoor].obj.position.z - 0.2
-  shuriken.position.x = roomGroup.doors[randomDoor].obj.position.x
-
-
-
-  // Add a shuriken in about 1 out of 4 rooms (25% chance)
-  if (Math.random() < 0.25) {
-    roomGroup.shuriken.show = true
-  } else {
-    roomGroup.shuriken.show = false
-    // if shuriken is in the first index AND if Math.random() is bigger than 0.25, 
-    // we will hide shuriken
-    shuriken.visible = false
-  }
-
-  // Update ring buffer
-  rooms.value[roomRecycleIndex.value] = roomGroup
-  lastRoomIndex.value = roomRecycleIndex.value
-  roomRecycleIndex.value = (roomRecycleIndex.value + 1) % rooms.value.length;
-}
-
-function initRooms() {
-  // for (let i = 0; i < rooms.value.length - 1; i++) {
-  for (let i = 0; i < rooms.value.length; i++) {
-    createRoom(i)
-  }
-}
 
 
 
@@ -381,21 +269,21 @@ function updateRoom(deltaTime: number) {
 
 function recycleRoom() {
   // Calculate the next position for the room
-  const lastRoomPosition = getNextRoomPosition();
+  const lastRoomPositionValue = getNextRoomPosition(roomModelSize);
 
   // Recycle the oldest room
   const roomToRecycle = rooms.value[roomRecycleIndex.value];
 
 
-  roomToRecycle.roomModel.position.z = lastRoomPosition;
+  roomToRecycle.roomModel.position.z = lastRoomPositionValue;
 
-  roomToRecycle.doors.door1.obj.position.z = lastRoomPosition + 0.03
+  roomToRecycle.doors.door1.obj.position.z = lastRoomPositionValue + 0.03
   roomToRecycle.doors.door1.obj.position.x = -POSITIONS.DOOR_X_OFFSET
 
-  roomToRecycle.doors.door2.obj.position.z = lastRoomPosition - 0.02
+  roomToRecycle.doors.door2.obj.position.z = lastRoomPositionValue - 0.02
   roomToRecycle.doors.door2.obj.position.x = 0
 
-  roomToRecycle.doors.door3.obj.position.z = lastRoomPosition + 0.03
+  roomToRecycle.doors.door3.obj.position.z = lastRoomPositionValue + 0.03
   roomToRecycle.doors.door3.obj.position.x = POSITIONS.DOOR_X_OFFSET
 
 
@@ -684,7 +572,17 @@ onMounted(async () => {
 
   assetsLoaded.value = true;
 
-  initRooms()
+  initRoomsFromManager(
+    roomModel,
+    doorLeftNobModel,
+    doorRightNobModel,
+    shurikenModel,
+    doorLeftNobBoundingBox,
+    doorRightNobBoundingBox,
+    shurikenBoundingBox,
+    roomModelSize,
+    scene
+  )
   mouseBoundingSphere = initCharacter(mouseModel, mouseBody, scene)
 
   // Initialize keyboard controls after mouse model is available
