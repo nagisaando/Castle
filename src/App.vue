@@ -8,6 +8,7 @@ import { useThreeSetup } from './composables/useThreeSetup'
 import { useModelLoader } from './composables/useModelLoader'
 import { useModelInitialization } from './composables/useModelInitialization'
 import { useGameState } from './composables/useGameState'
+import { useAudioManager } from './composables/useAudioManager'
 
 import gsap from "gsap";
 
@@ -46,6 +47,19 @@ const {
   // Helper functions
   updateDistance,
 } = useGameState()
+
+// Initialize audio manager
+const {
+  playMoveSound,
+  playJumpSound,
+  playDoorSound,
+  playCatSound,
+  playGameBackground,
+  pauseGameBackground,
+  resetGameBackground,
+  setGameBackgroundPlaybackRate,
+  gameBackground
+} = useAudioManager()
 
 
 
@@ -310,29 +324,6 @@ function animateCameraToCloseUp(controls: OrbitControls, camera: THREE.Perspecti
 
 }
 
-const moveSounds: HTMLAudioElement[] = []
-const MAX_SOUND_POOL = 3
-let currentMoveSoundIndex = 0
-
-for (let i = 0; i < MAX_SOUND_POOL; i++) {
-  const moveSound = new Audio('/sound/zapsplat_cartoon_swoosh_swipe_whoosh_snatch_001_111185.mp3')
-  moveSound.preload = 'auto'
-  moveSound.volume = 0.2
-  moveSounds.push(moveSound)
-}
-
-const jumpSounds: HTMLAudioElement[] = []
-let currentJumpSoundIndex = 0
-
-for (let i = 0; i < MAX_SOUND_POOL; i++) {
-  const jumpSound = new Audio('/sound/haiaa.mp3')
-  jumpSound.preload = 'auto'
-  jumpSounds.push(jumpSound)
-}
-
-
-const doorSound = new Audio('/sound/zapsplat_foley_cupboard_closet_door_wooden_old_hinge_creak_squeak_very_short_slight_004_106659.mp3')
-doorSound.volume = 0.1
 
 function setupKeyboardControls() {
   const handleKeydown = (e: KeyboardEvent) => {
@@ -382,11 +373,7 @@ const handleJump = () => {
   const currentTailRotationY = mouseTail.rotation.y
   const currentTailPositionY = mouseTail.position.y
 
-  const sound = jumpSounds[currentJumpSoundIndex]
-  sound.playbackRate = sound.playbackRate >= 2 ? 2 : 1 + (speedMultiplier.value * 0.005)
-  currentJumpSoundIndex = (currentJumpSoundIndex + 1) % MAX_SOUND_POOL;
-  sound.currentTime = 0
-  sound.play()
+  playJumpSound(speedMultiplier.value)
 
   const mouseModelPartSpeed = 0.2 * jumpSpeedFactor || 0.03
 
@@ -503,11 +490,7 @@ const mouseMove = (x: number) => {
     ease: "power2.out",
     x,
     onStart: () => {
-      const sound = moveSounds[currentMoveSoundIndex]
-      currentMoveSoundIndex = (currentMoveSoundIndex + 1) % MAX_SOUND_POOL;
-      sound.currentTime = 0
-      sound.playbackRate = sound.playbackRate >= 2 ? 2 : 1 + (speedMultiplier.value * 0.005)
-      sound.play()
+      playMoveSound(speedMultiplier.value)
     }
   });
   gsap.to(controls.target, {
@@ -585,7 +568,7 @@ function tick(
         // safari has issue with .playbackRate and it glitches the sound. 
         // instead for safari, we don't speed up
         if (!isSafari) {
-          gameBackground.playbackRate = gameBackground.playbackRate >= 2 ? 2 : 1 + (speedMultiplier.value * 0.005)
+          setGameBackgroundPlaybackRate(gameBackground.playbackRate >= 2 ? 2 : 1 + (speedMultiplier.value * 0.005))
         }
       }
 
@@ -716,9 +699,6 @@ function resetRoomGroup(roomGroup: RoomGroup) {
   roomGroup.hide = false
 }
 
-const catSound = new Audio('/sound/Blastwave_FX_CatMeow_SFXB.203.mp3')
-catSound.volume = 0.4
-catSound.playbackRate = 1.8
 function crashMouse(): Promise<void> {
   return new Promise((resolve) => {
 
@@ -733,7 +713,7 @@ function crashMouse(): Promise<void> {
       duration: 0.7,
     })
     setTimeout(() => {
-      catSound.play()
+      playCatSound()
     }, 700)
     gsap.to(catFeetModel.position, {
       y: 0.2,
@@ -864,7 +844,7 @@ function startGame() {
     duration: 1,
     delay: 3,
     onStart: () => {
-      doorSound.play()
+      playDoorSound()
     }
   })
   gsap.to(leftDoor.rotation, {
@@ -888,8 +868,7 @@ function startGame() {
     })
     catFeetModel.visible = true
     gameStart.value = true
-    gameBackground.currentTime = 0
-    gameBackground.play()
+    playGameBackground()
     return
   }, 6000)
 }
@@ -1023,9 +1002,6 @@ function cleanUpSceneWhenGameStarts() {
 
 // https://www.zapsplat.com/music/game-music-action-retro-8-bit-style-bouncy-hard-dance-track-with-electronic-synths-and-drums/
 // need credit page
-const gameBackground = new Audio('/sound/music_zapsplat_game_music_action_retro_8_bit_repeating_016.mp3')
-gameBackground.volume = 0.4
-gameBackground.loop = true
 
 
 watchEffect(() => {
@@ -1037,7 +1013,7 @@ watchEffect(() => {
 
   }
   if (gameStart.value && gameOver.value) {
-    gameBackground.pause()
+    pauseGameBackground()
   }
 })
 
@@ -1159,10 +1135,6 @@ function removeFloorTexture() {
 async function restartGame() {
   showGameOverMessage.value = false
 
-  gameBackground.currentTime = 0
-
-  catSound.currentTime = 0
-
   gsap.to(catFeetModel.position, {
     z: 8,
     x: Math.PI / 8,
@@ -1184,8 +1156,8 @@ async function restartGame() {
   SPEED.value = initialSpeed
   speedMultiplier.value = 1.0
   gameOver.value = false
-  gameBackground.playbackRate = 1.0
-  gameBackground.play()
+  setGameBackgroundPlaybackRate(1.0)
+  playGameBackground()
   gameStart.value = true
 
 }
