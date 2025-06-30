@@ -13,6 +13,7 @@ import { useKeyboardControls, type MouseAnimationParams } from './composables/us
 import { useEnvironment } from './composables/useEnvironment'
 import { useCharacterManager } from './composables/useCharacterManager'
 import { useRoomManager } from './composables/useRoomManager'
+import GameUI from './components/GameUI.vue'
 
 import gsap from "gsap";
 
@@ -127,13 +128,8 @@ let roomModelSize: THREE.Vector3
 let roomModel: THREE.Group;
 
 
-
-
 let doorLeftNobModel: THREE.Group;
 let doorRightNobModel: THREE.Group;
-
-
-
 
 
 
@@ -726,62 +722,25 @@ async function restartGame() {
 </script>
 
 <template>
-
-  <canvas class="webgl" ref="canvas">
-
-  </canvas>
-  <div v-if="!assetsLoaded" class="loading-overlay">
-    <p>Loading... {{ totalProgress }}%</p>
-  </div>
-
-  <div v-if="assetsLoaded && showButton" class="game-start">
-    <button @click="startGame">Game Start</button>
-    <div class="key-info">
-      <p><span class="key">&lt;</span>: move left</p>
-      <p><span class="key">&gt;</span>: move right</p>
-      <p><span class="key">&#x22C0;</span>: jump</p>
-    </div>
-  </div>
-
-  <div class="info">
-    <p class="distance">Distance: {{ Math.floor(distance) }}</p>
-    <div v-if="gameStart" class="key-info">
-      <p><span class="key">&lt;</span>: move left</p>
-      <p><span class="key">&gt;</span>: move right</p>
-      <p><span class="key">&#x22C0;</span>: jump</p>
-    </div>
-  </div>
-
-
-  <p class="credit">Sound by <a href="https://www.zapsplat.com/" target="_blank">ZapSplat</a></p>
-
-  <div v-if="showGameOverMessage" class="game-over">
-    <p>Game over...</p>
-    <button @click="restartGame">try again</button>
-  </div>
-
-
-  <!-- this is ui for mobile -->
-  <div class="mobile-handle-buttons" v-if="gameStart && !gameOver">
-    <button @click="handleLeftMovement">&#9664;</button>
-    <button @click="handleJump">🔼</button>
-    <button @click="handleRightMovement"> &#9654;</button>
-  </div>
-
-
+  <canvas class="webgl" ref="canvas"></canvas>
+  
+  <GameUI 
+    :assetsLoaded="assetsLoaded"
+    :totalProgress="totalProgress"
+    :showButton="showButton"
+    :gameStart="gameStart"
+    :gameOver="gameOver"
+    :distance="distance"
+    :showGameOverMessage="showGameOverMessage"
+    @startGame="startGame"
+    @restartGame="restartGame"
+    @handleLeftMovement="handleLeftMovement"
+    @handleRightMovement="handleRightMovement"
+    @handleJump="handleJump"
+  />
 </template>
 
 <style>
-/* Variables */
-:root {
-  --text-color: white;
-  --font-size-l: 2rem;
-  --font-size-m: 1.5rem;
-  --font-size-s: 1rem;
-  --spacing-m: 1rem;
-  --spacing-l: 2rem;
-}
-
 /* Base Styles */
 * {
   margin: 0;
@@ -800,127 +759,5 @@ body {
   top: 0;
   left: 0;
   outline: none;
-}
-
-/* UI Elements */
-button {
-  font-size: var(--font-size-l);
-  border: 2px solid var(--text-color);
-  background-color: transparent;
-  color: var(--text-color);
-}
-
-.key {
-  border: 1px solid var(--text-color);
-  padding: var(--spacing-m) var(--spacing-l);
-  margin-right: var(--spacing-m);
-}
-
-/* Layout & Containers */
-.credit {
-  position: absolute;
-  right: var(--spacing-l);
-  bottom: var(--spacing-m);
-  color: var(--text-color);
-}
-
-.info {
-  position: absolute;
-  right: var(--spacing-l);
-  top: var(--spacing-m);
-  color: var(--text-color);
-  text-align: right;
-}
-
-.info .distance {
-  font-size: var(--font-size-l);
-}
-
-.info .key-info {
-  text-align: left;
-  color: var(--text-color);
-}
-
-.info .key-info p {
-  padding: 0.2rem 0;
-}
-
-.info .key-info .key {
-  padding: 0.2rem 0.4rem;
-  margin-right: 0.6rem;
-}
-
-/* Overlays */
-.loading-overlay,
-.game-start,
-.game-over {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-}
-
-.loading-overlay {
-  color: var(--text-color);
-  font-size: var(--font-size-l);
-}
-
-.game-start .key-info {
-  font-size: 1.3rem;
-  text-align: left;
-  margin-top: var(--spacing-l);
-  color: var(--text-color);
-}
-
-.game-start .key-info p {
-  padding: var(--spacing-m) 0;
-}
-
-.game-over p {
-  font-size: 3rem;
-  margin-bottom: 0.5rem;
-  color: black;
-  font-weight: 500;
-}
-
-.game-over button {
-  text-wrap: nowrap;
-}
-
-/* Mobile Specific */
-.mobile-handle-buttons {
-  display: none;
-  /* Hidden by default */
-}
-
-@media only screen and (max-width: 500px) {
-  button {
-    font-size: var(--font-size-m);
-  }
-
-  .game-over p {
-    font-size: var(--font-size-m);
-  }
-
-  .info .distance {
-    font-size: var(--font-size-m);
-  }
-
-  .key-info {
-    display: none;
-  }
-
-  .mobile-handle-buttons {
-    display: block;
-    position: absolute;
-    bottom: 10%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-  }
-
-  .mobile-handle-buttons button {
-    padding: 1rem;
-  }
 }
 </style>
