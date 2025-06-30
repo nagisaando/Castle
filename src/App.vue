@@ -5,6 +5,8 @@ import type { Door, DoorGroup, RoomGroup } from './types';
 import { computed, onMounted, ref, useTemplateRef, watchEffect } from 'vue'
 import { DRACOLoader, GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import { useThreeSetup } from './composables/useThreeSetup'
+import { useModelLoader } from './composables/useModelLoader'
+import { useModelInitialization } from './composables/useModelInitialization'
 
 import gsap from "gsap";
 
@@ -36,29 +38,7 @@ const assetsLoaded = ref(false);
 // Scene
 // Scene will be created by useThreeSetup composable
 
-// Loaders
-const gltfLoader = new GLTFLoader()
-
-function loadModel(url: string, onProgress: (progress: number) => void): Promise<THREE.Group> {
-  return new Promise((resolve, reject) => {
-    gltfLoader.load(url, (gltf) => {
-      onProgress(100); // Ensure it reports 100% on completion
-      resolve(gltf.scene)
-    },
-      (xhr) => {
-        if (xhr.lengthComputable) {
-          const percentage = Math.min((xhr.loaded / xhr.total * 100), 100); // Clamp progress to 100
-          onProgress(percentage);
-        }
-      },
-      (err) => reject(err)
-    )
-  })
-}
-
-const dracoLoader = new DRACOLoader()
-dracoLoader.setDecoderPath('/draco/')
-gltfLoader.setDRACOLoader(dracoLoader)
+// Model loading will be handled by useModelLoader composable
 
 
 /**
@@ -969,107 +949,49 @@ onMounted(async () => {
 
   const isMobile = window.matchMedia("(max-width: 500px)").matches;
 
-  const modelsToLoad = [
-    '/model/left-door-nob/door.gltf',
-    '/model/right-door-nob/door.gltf',
-    '/model/castle/castle.gltf',
-    '/model/interior/interior.gltf',
-    '/model/tree-fake/tree-fake.gltf',
-    '/model/mouse/mouse.gltf',
-    '/model/shuriken/shuriken.gltf',
-    '/model/cat-feet/cat-feet.gltf',
-  ];
+  // Load all models
+  const modelLoader = useModelLoader()
+  const models = await modelLoader.loadAllModels((progress, index) => {
+    modelProgress.value[index] = progress;
+  })
 
+  // Initialize all models using composable
+  const modelInit = useModelInitialization()
+  
+  catFeetModel = modelInit.initializeCatFeetModel(models.catFeet, scene)
+  
+  const mouseData = modelInit.initializeMouseModel(models.mouse)
+  mouseModel = mouseData.mouseModel
+  mouseRightBackFoot = mouseData.mouseRightBackFoot
+  mouseLeftBackFoot = mouseData.mouseLeftBackFoot
+  initialBackFootPositionZ = mouseData.initialBackFootPositionZ
+  mouseModelBoundingBox = mouseData.mouseModelBoundingBox
+  mouseBody = mouseData.mouseBody
+  mouseBodyPositionY = mouseData.mouseBodyPositionY
+  mouseTail = mouseData.mouseTail
+  mouseTailPositionY = mouseData.mouseTailPositionY
 
-  const [doorLeftNobModelData, doorRightModelData, castle, room, fakeTree, mouse, shuriken, catFeet] = await Promise.all(
-    modelsToLoad.map((url, index) => loadModel(url, (progress) => {
-      modelProgress.value[index] = progress;
-    }))
-  );
+  const roomData = modelInit.initializeRoomModel(models.room)
+  roomModel = roomData.roomModel
+  roomModelSize = roomData.roomModelSize
 
-  catFeetModel = catFeet
-  catFeetModel.position.z = 8
-  catFeetModel.rotation.x = Math.PI / 8
-  catFeetModel.position.y = 0.7
-  catFeetModel.visible = false
-  scene.add(catFeetModel)
+  const doorData = modelInit.initializeDoorModels(models.doorLeftNob, models.doorRightNob)
+  doorLeftNobModel = doorData.doorLeftNobModel
+  doorRightNobModel = doorData.doorRightNobModel
+  doorLeftNobBoundingBox = doorData.doorLeftNobBoundingBox
+  doorRightNobBoundingBox = doorData.doorRightNobBoundingBox
 
+  const shurikenData = modelInit.initializeShurikenModel(models.shuriken)
+  shurikenModel = shurikenData.shurikenModel
+  shurikenBoundingBox = shurikenData.shurikenBoundingBox
+
+  castleModel = modelInit.initializeCastleModel(models.castle, scene)
+  trees = modelInit.createTrees(models.fakeTree, scene, isMobile)
 
   assetsLoaded.value = true;
 
-
-  const size = new THREE.Vector3()
-
-  mouseModel = mouse
-  mouseRightBackFoot = mouseModel.getObjectByName("right-rear-foot") as THREE.Object3D
-  mouseLeftBackFoot = mouseModel.getObjectByName("left-rear-foot") as THREE.Object3D
-  initialBackFootPositionZ = mouseLeftBackFoot.position.z
-  mouseModelBoundingBox = new THREE.Box3().setFromObject(mouseModel)
-
-  mouseBody = mouseModel.getObjectByName('body') as THREE.Object3D
-  mouseBodyPositionY = mouseBody.position.y
-
-
-  mouseTail = mouseModel.getObjectByName('tail') as THREE.Object3D
-  mouseTailPositionY = mouseTail.position.y
-
-  roomModel = room
-  const roomBoundingBox = new THREE.Box3().setFromObject(roomModel)
-
-  roomModelSize = roomBoundingBox.getSize(size)
-
-  doorLeftNobModel = doorLeftNobModelData
-
-  doorRightNobModel = doorRightModelData
-
-  shurikenModel = shuriken
-  doorLeftNobBoundingBox = new THREE.Box3().setFromObject(doorLeftNobModel)
-  doorRightNobBoundingBox = new THREE.Box3().setFromObject(doorRightNobModel)
-  shurikenBoundingBox = new THREE.Box3().setFromObject(shurikenModel)
-  // scene.add(shuriken)
-
   initRooms()
   initMouse()
-
-
-
-  castleModel = castle
-  scene.add(castleModel)
-
-  const treeCount = isMobile ? 50 : 250;
-
-  const minDist = 10; // Closest trees are 10 units away
-  const maxDist = isMobile ? 30 : 70; // Farthest trees are 80 units away
-  const exclusionZone = { x: [-5, 5], z: [0, isMobile ? 10 : 30] }; // No trees spawn here
-  for (let i = 0; i < treeCount; i++) {
-    const tree = fakeTree.clone();
-    let x, z;
-    let attempts = 0;
-    const maxAttempts = 10; // Safety net to prevent infinite loops
-
-    do {
-      // Random angle and distance within range
-      const angle = Math.random() * Math.PI * 2;
-      const distance = minDist + Math.random() * (maxDist - minDist);
-
-      x = Math.cos(angle) * distance;
-      z = Math.sin(angle) * distance;
-      attempts++;
-    } while (
-      // Keep trying if inside exclusion zone
-      (x >= exclusionZone.x[0] && x <= exclusionZone.x[1] &&
-        z >= exclusionZone.z[0] && z <= exclusionZone.z[1]) &&
-      attempts < maxAttempts
-    );
-
-    // Skip if too many attempts (optional)
-    if (attempts >= maxAttempts) continue;
-
-    tree.position.set(x, 0, z);
-    scene.add(tree);
-    trees.push(tree)
-  }
-
 
   // Start game loop
   tick(renderer, camera, controls)
