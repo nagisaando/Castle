@@ -9,6 +9,7 @@ import { useModelLoader } from './composables/useModelLoader'
 import { useModelInitialization } from './composables/useModelInitialization'
 import { useGameState } from './composables/useGameState'
 import { useAudioManager } from './composables/useAudioManager'
+import { useKeyboardControls, type MouseAnimationParams } from './composables/useKeyboardControls'
 
 import gsap from "gsap";
 
@@ -56,10 +57,25 @@ const {
   playCatSound,
   playGameBackground,
   pauseGameBackground,
-  resetGameBackground,
   setGameBackgroundPlaybackRate,
   gameBackground
 } = useAudioManager()
+
+// Initialize keyboard controls at root level
+const {
+  setupKeyboardControls,
+  handleLeftMovement,
+  handleRightMovement,
+  handleJump,
+  initializeControls: initializeKeyboardControls
+} = useKeyboardControls(
+  gameStart,
+  gameOver,
+  jump,
+  speedMultiplier,
+  playMoveSound,
+  playJumpSound
+)
 
 
 
@@ -325,185 +341,9 @@ function animateCameraToCloseUp(controls: OrbitControls, camera: THREE.Perspecti
 }
 
 
-function setupKeyboardControls() {
-  const handleKeydown = (e: KeyboardEvent) => {
-    if (e.target !== document.body) return
-
-    const { code } = e
-
-    // Only prevent default for keys we actually handle
-    const handledKeys = ['Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp'];
-    if (handledKeys.includes(code)) {
-      e.preventDefault();
-    }
-
-    // Only handle movement if game has started
-    if (!gameStart.value || gameOver.value) return
-
-    // Handle movement 
-    if (code === 'ArrowLeft') handleLeftMovement()
-    if (code === 'ArrowRight') handleRightMovement()
-    if (code === 'ArrowUp' && !jump.value) handleJump()
-    // if (code === 'ArrowDown') handleDown()
-  }
 
 
 
-  window.addEventListener('keydown', handleKeydown)
-}
-
-const handleLeftMovement = () => {
-  if (mouseModel.position.x === 0) mouseMove(-POSITIONS.MOUSE_X)
-  if (mouseModel.position.x === POSITIONS.MOUSE_X) mouseMove(0)
-}
-
-const handleRightMovement = () => {
-  if (mouseModel.position.x === 0) mouseMove(POSITIONS.MOUSE_X)
-  if (mouseModel.position.x === -POSITIONS.MOUSE_X) mouseMove(0)
-}
-
-const handleJump = () => {
-  jump.value = true
-  const jumpSpeedFactor = 1 / speedMultiplier.value
-
-  const currentRightFootY = mouseRightBackFoot.position.y;
-  const currentLeftFootRotationX = mouseLeftBackFoot.rotation.x;
-  const currentRightFootRotationX = mouseRightBackFoot.rotation.x;
-  const currentBodyRotationX = mouseBody.rotation.x
-  const currentTailRotationY = mouseTail.rotation.y
-  const currentTailPositionY = mouseTail.position.y
-
-  playJumpSound(speedMultiplier.value)
-
-  const mouseModelPartSpeed = 0.2 * jumpSpeedFactor || 0.03
-
-  gsap.to(
-    mouseModel.position, {
-    y: 0.23,
-    duration: 0.5 * jumpSpeedFactor || 0.1,
-    ease: "power1.out",
-    onComplete: () => {
-      gsap.to(mouseModel.position, {
-        y: 0, // Return to original height
-        duration: 0.25 * jumpSpeedFactor || 0.05,
-        ease: "bounce.out",
-        onComplete: () => {
-          jump.value = false
-        },
-      });
-
-      gsap.to(
-        mouseLeftBackFoot.rotation, {
-        x: currentLeftFootRotationX,
-        duration: mouseModelPartSpeed,
-        ease: "power1.inOut",
-      })
-      gsap.to(
-        mouseRightBackFoot.rotation, {
-        x: currentRightFootRotationX,
-        duration: mouseModelPartSpeed,
-        ease: "power1.inOut",
-      })
-      gsap.to(
-        mouseRightBackFoot.position, {
-        y: currentRightFootY,
-        duration: mouseModelPartSpeed,
-        ease: "power1.inOut",
-      })
-      gsap.to(
-        mouseBody.rotation, {
-        x: currentBodyRotationX,
-        duration: mouseModelPartSpeed,
-        ease: "power1.inOut",
-      })
-      gsap.to(
-        mouseTail.rotation, {
-        y: currentTailRotationY,
-        duration: mouseModelPartSpeed,
-        ease: "power1.inOut",
-      })
-      gsap.to(
-        mouseTail.position, {
-        y: currentTailPositionY,
-        duration: mouseModelPartSpeed,
-        ease: "power1.out",
-      })
-
-
-    }
-  })
-
-  gsap.to(
-    mouseLeftBackFoot.rotation, {
-    x: `-=${Math.PI / 2}`,
-    duration: mouseModelPartSpeed,
-    ease: "power1.out",
-  })
-
-  gsap.to(
-    mouseRightBackFoot.rotation, {
-    x: `-=${Math.PI / 2.4}`,
-    duration: mouseModelPartSpeed,
-    ease: "power1.out",
-  })
-
-
-  gsap.to(
-    mouseRightBackFoot.position, {
-    y: `+=0.01`,
-    duration: mouseModelPartSpeed,
-    ease: "power1.out",
-  })
-
-  gsap.to(
-    mouseBody.rotation, {
-    x: -0.4,
-    duration: mouseModelPartSpeed,
-    ease: "power1.out",
-  })
-
-  gsap.to(
-    mouseTail.rotation, {
-    y: -0.1,
-    duration: mouseModelPartSpeed,
-    ease: "power1.out",
-  })
-
-  gsap.to(
-    mouseTail.position, {
-    y: `+=0.1`,
-    duration: mouseModelPartSpeed,
-    ease: "power1.out",
-  })
-
-
-
-
-
-
-}
-
-const mouseMove = (x: number) => {
-  const moveDuration = 0.2 / speedMultiplier.value || 0.05;
-  gsap.to(mouseModel.position, {
-    duration: moveDuration,
-    ease: "power2.out",
-    x,
-    onStart: () => {
-      playMoveSound(speedMultiplier.value)
-    }
-  });
-  gsap.to(controls.target, {
-    duration: moveDuration,
-    ease: "power2.out",
-    x,
-  });
-  gsap.to(camera.position, {
-    duration: moveDuration,
-    ease: "power2.out",
-    x,
-  });
-}
 
 
 
@@ -874,8 +714,6 @@ function startGame() {
 }
 
 // Progress tracking handled by gameState
-
-
 onMounted(async () => {
   if (!canvas.value) return
 
@@ -889,7 +727,7 @@ onMounted(async () => {
   renderer = threeSetup.renderer
   controls = threeSetup.controls
 
-  setupKeyboardControls()
+  // Keyboard controls will be set up after mouse model is loaded
 
   // Create floor
   alphaTexture = textureLoader.load('/texture/alpha.jpg')
@@ -979,6 +817,20 @@ onMounted(async () => {
 
   initRooms()
   initMouse()
+
+  // Initialize keyboard controls after mouse model is available
+  const animationParams: MouseAnimationParams = {
+    mouseModel,
+    mouseRightBackFoot,
+    mouseLeftBackFoot,
+    mouseBody,
+    mouseTail,
+    camera,
+    controls
+  }
+  
+  initializeKeyboardControls(animationParams)
+  setupKeyboardControls()
 
   // Start game loop
   tick(renderer, camera, controls)
