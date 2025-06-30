@@ -11,6 +11,7 @@ import { useGameState } from './composables/useGameState'
 import { useAudioManager } from './composables/useAudioManager'
 import { useKeyboardControls, type MouseAnimationParams } from './composables/useKeyboardControls'
 import { useEnvironment } from './composables/useEnvironment'
+import { useCharacterManager } from './composables/useCharacterManager'
 
 import gsap from "gsap";
 
@@ -86,6 +87,12 @@ const {
   removeFloorTextures
 } = useEnvironment()
 
+// Initialize character manager
+const {
+  initMouse: initCharacter,
+  updateMouseBoundingSphere
+} = useCharacterManager()
+
 
 
 /**
@@ -122,59 +129,7 @@ let mouseTailPositionY: number
 let mouseBoundingSphere: THREE.Sphere
 
 
-function initMouse() {
-  mouseModel.position.set(0, POSITIONS.MOUSE_Y, POSITIONS.MOUSE_START_Z)
-  scene.add(mouseModel)
 
-  // Calculate body size
-  const bodySize = new THREE.Box3().setFromObject(mouseBody).getSize(new THREE.Vector3());
-  const sphereRadius = Math.max(bodySize.x, bodySize.y, bodySize.z) * 0.5 * 0.8; // 80% of half the largest dimension
-
-
-  // In 3D modeling, child objects (mouse body) often have local positions relative to their parent
-  // to create the bounding sphere with the child object, I have to give a world coordinate to the mouse body object
-  // so that it can properly update the bounding sphere
-
-
-  // Get world position of the body
-  mouseModel.updateMatrixWorld() // Ensure transforms are up-to-date
-  const bodyWorldPosition = new THREE.Vector3()
-  mouseBody.getWorldPosition(bodyWorldPosition)
-
-  mouseBoundingSphere = new THREE.Sphere(bodyWorldPosition, sphereRadius);
-
-
-
-  // we can remove this later, this is just visualize sphere 
-  // const debugSphereGeometry = new THREE.SphereGeometry(1, 16, 16);
-  // const debugSphereMaterial = new THREE.MeshBasicMaterial({
-  //   color: 0xffff00,
-  //   wireframe: true,
-  //   transparent: true,
-  //   opacity: 0.5
-  // });
-  // debugSphere = new THREE.Mesh(debugSphereGeometry, debugSphereMaterial);
-  // debugSphere.position.copy(mouseBoundingSphere.center);
-  // debugSphere.scale.setScalar(mouseBoundingSphere.radius);
-  // scene.add(debugSphere);
-}
-
-function updateMouseBoundingSphere() {
-  // 1. Update all world matrices in the hierarchy
-  //    - mouseBody's world position depends on parent (mouseModel) transforms
-  //    - Three.js doesn't auto-update world matrices until render time
-  // Without this, we'd use stale positions for collision detection
-  mouseModel.updateMatrixWorld()
-
-  // 2. Update collision sphere to match current world position:
-  //    - getWorldPosition() accounts for ALL parent transforms
-  //    - mouseBoundingSphere.center will now match visual position
-  mouseBody.getWorldPosition(mouseBoundingSphere.center)
-
-  // Debug visualization (optional)
-  // debugSphere.position.copy(mouseBoundingSphere.center)
-  // debugSphere.scale.setScalar(mouseBoundingSphere.radius)
-}
 
 
 
@@ -584,7 +539,7 @@ async function checkCollisions(room: RoomGroup) {
   if (Math.abs(room.doors.door1.obj.position.z - mouseModel.position.z) < 1) {
     const doorsToCheck = [room.doors.door1, room.doors.door2, room.doors.door3]
 
-    updateMouseBoundingSphere()
+    updateMouseBoundingSphere(mouseModel, mouseBody, mouseBoundingSphere)
 
     // By applying the world matrix to the bounding box, we move the box to the correct position
     // without recalculating its geometry from scratch. This is much faster.
@@ -789,7 +744,7 @@ onMounted(async () => {
   assetsLoaded.value = true;
 
   initRooms()
-  initMouse()
+  mouseBoundingSphere = initCharacter(mouseModel, mouseBody, scene)
 
   // Initialize keyboard controls after mouse model is available
   const animationParams: MouseAnimationParams = {
