@@ -3,30 +3,49 @@ import * as THREE from "three"
 import { POSITIONS, initialSpeed } from './constants'
 import type { Door, DoorGroup, RoomGroup } from './types';
 import { computed, onMounted, ref, useTemplateRef, watchEffect } from 'vue'
-import { DRACOLoader, GLTFLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
+import { OrbitControls } from 'three/examples/jsm/Addons.js';
 import { useThreeSetup } from './composables/useThreeSetup'
 import { useModelLoader } from './composables/useModelLoader'
 import { useModelInitialization } from './composables/useModelInitialization'
+import { useGameState } from './composables/useGameState'
 
 import gsap from "gsap";
 
 
 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-let SPEED = initialSpeed
-const BASE_SPEED = initialSpeed
-let speedMultiplier = 1.0;
-
-
-
 // Canvas
 const canvas = useTemplateRef('canvas')
 
+// Initialize game state
+const isMobile = window.matchMedia("(max-width: 500px)").matches;
+const roomBufferSize = isMobile ? 3 : 6;
+const {
+  // Core game state
+  gameOver,
+  gameStart,
+  assetsLoaded,
+  showButton,
+  showGameOverMessage,
+  jump,
+  distance,
 
-// Gameover
-let gameOver = ref(false)
-const gameStart = ref(false)
-const assetsLoaded = ref(false);
+  // Speed and timing
+  SPEED,
+  BASE_SPEED,
+  speedMultiplier,
+
+  // Progress tracking
+  modelProgress,
+  totalProgress,
+
+  // Room management
+  roomRecycleIndex,
+  lastRoomIndex,
+
+  // Helper functions
+  updateDistance,
+} = useGameState()
 
 
 
@@ -128,18 +147,12 @@ let doorLeftNobBoundingBox: THREE.Box3;
 let doorRightNobBoundingBox: THREE.Box3;
 let shurikenBoundingBox: THREE.Box3;
 
-const isMobile = window.matchMedia("(max-width: 500px)").matches;
-const roomBufferSize = isMobile ? 3 : 6;
 const rooms = ref<RoomGroup[]>(new Array(roomBufferSize))
 
 let roomModelSize: THREE.Vector3
 let roomModel: THREE.Group;
 
-// Ring buffer indices for rooms
-const roomRecycleIndex = ref(0); // Tracks which rooms to replace next
-const lastRoomIndex = ref(-1)
-
-
+// Room position computed property
 const lastRoomPosition = computed(() => {
   return rooms.value[lastRoomIndex.value]?.roomModel.position.z ?? 0
 })
@@ -274,8 +287,7 @@ function initRooms() {
 // Controls setup moved to useThreeSetup composable
 
 
-// Jump
-const jump = ref(false)
+// Jump handled by gameState
 
 function animateCameraToCloseUp(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
 
@@ -334,10 +346,6 @@ function setupKeyboardControls() {
       e.preventDefault();
     }
 
-    if (code === 'Space') {
-      gameOver.value != gameOver.value
-    }
-
     // Only handle movement if game has started
     if (!gameStart.value || gameOver.value) return
 
@@ -365,7 +373,7 @@ const handleRightMovement = () => {
 
 const handleJump = () => {
   jump.value = true
-  const jumpSpeedFactor = 1 / speedMultiplier
+  const jumpSpeedFactor = 1 / speedMultiplier.value
 
   const currentRightFootY = mouseRightBackFoot.position.y;
   const currentLeftFootRotationX = mouseLeftBackFoot.rotation.x;
@@ -375,7 +383,7 @@ const handleJump = () => {
   const currentTailPositionY = mouseTail.position.y
 
   const sound = jumpSounds[currentJumpSoundIndex]
-  sound.playbackRate = sound.playbackRate >= 2 ? 2 : 1 + (speedMultiplier * 0.005)
+  sound.playbackRate = sound.playbackRate >= 2 ? 2 : 1 + (speedMultiplier.value * 0.005)
   currentJumpSoundIndex = (currentJumpSoundIndex + 1) % MAX_SOUND_POOL;
   sound.currentTime = 0
   sound.play()
@@ -489,7 +497,7 @@ const handleJump = () => {
 }
 
 const mouseMove = (x: number) => {
-  const moveDuration = 0.2 / speedMultiplier || 0.05;
+  const moveDuration = 0.2 / speedMultiplier.value || 0.05;
   gsap.to(mouseModel.position, {
     duration: moveDuration,
     ease: "power2.out",
@@ -498,7 +506,7 @@ const mouseMove = (x: number) => {
       const sound = moveSounds[currentMoveSoundIndex]
       currentMoveSoundIndex = (currentMoveSoundIndex + 1) % MAX_SOUND_POOL;
       sound.currentTime = 0
-      sound.playbackRate = sound.playbackRate >= 2 ? 2 : 1 + (speedMultiplier * 0.005)
+      sound.playbackRate = sound.playbackRate >= 2 ? 2 : 1 + (speedMultiplier.value * 0.005)
       sound.play()
     }
   });
@@ -516,10 +524,7 @@ const mouseMove = (x: number) => {
 
 
 
-const distance = ref(0)
-function updateDistance(delta: number) {
-  distance.value += delta * SPEED / 2;
-}
+// Distance handled by gameState
 // Game loop
 function tick(
   renderer: THREE.WebGLRenderer,
@@ -552,12 +557,12 @@ function tick(
 
     if (gameStart.value && !gameOver.value) {
       if (castleModel)
-        castleModel.position.z += SPEED * deltaTime
+        castleModel.position.z += SPEED.value * deltaTime
 
       updateRoom(deltaTime)
       updateDistance(deltaTime)
       if (!jump.value) {
-        const walkingAnimationSpeed = walkingSpeed * speedMultiplier >= 50 ? 50 : walkingSpeed * speedMultiplier;
+        const walkingAnimationSpeed = walkingSpeed * speedMultiplier.value >= 50 ? 50 : walkingSpeed * speedMultiplier.value;
 
         mouseLeftBackFoot.position.z = initialBackFootPositionZ + Math.sin(elapsedTime * walkingAnimationSpeed) * 0.1
         mouseLeftBackFoot.rotation.x = Math.sin(elapsedTime * walkingAnimationSpeed) * 0.2;
@@ -572,15 +577,15 @@ function tick(
 
       speedIncreaseTimer += deltaTime;
       if (speedIncreaseTimer >= SPEED_INCREASE_INTERVAL) {
-        speedMultiplier = speedMultiplier >= 4 ? 4 : speedMultiplier + 0.1
-        SPEED = BASE_SPEED * speedMultiplier;
-        if (speedMultiplier < 4) {
+        speedMultiplier.value = speedMultiplier.value >= 4 ? 4 : speedMultiplier.value + 0.1
+        SPEED.value = BASE_SPEED * speedMultiplier.value;
+        if (speedMultiplier.value < 4) {
           speedIncreaseTimer = 0
         }
         // safari has issue with .playbackRate and it glitches the sound. 
         // instead for safari, we don't speed up
         if (!isSafari) {
-          gameBackground.playbackRate = gameBackground.playbackRate >= 2 ? 2 : 1 + (speedMultiplier * 0.005)
+          gameBackground.playbackRate = gameBackground.playbackRate >= 2 ? 2 : 1 + (speedMultiplier.value * 0.005)
         }
       }
 
@@ -608,7 +613,7 @@ function tick(
 
 function updateRoom(deltaTime: number) {
   rooms.value.forEach((room) => {
-    const speed = SPEED * deltaTime
+    const speed = SPEED.value * deltaTime
     room.roomModel.position.z += speed
     room.doors.door1.obj.position.z += speed
     room.doors.door2.obj.position.z += speed
@@ -746,7 +751,7 @@ function crashMouse(): Promise<void> {
   })
 
 }
-const showGameOverMessage = ref(false)
+// Game over message handled by gameState
 async function checkCollisions(room: RoomGroup) {
   if (Math.abs(room.doors.door1.obj.position.z - mouseModel.position.z) < 1) {
     const doorsToCheck = [room.doors.door1, room.doors.door2, room.doors.door3]
@@ -788,7 +793,7 @@ function handleDoorOpening(door: DoorGroup) {
       doorPart.opened = true
       gsap.to(doorPart.obj.position, {
         x: `+=${xOffset}`,
-        duration: 0.2 / speedMultiplier || 0.05,
+        duration: 0.2 / speedMultiplier.value || 0.05,
         ease: "power2.out",
       })
 
@@ -836,7 +841,7 @@ let controls: OrbitControls
 let scene: THREE.Scene
 let renderer: THREE.WebGLRenderer
 
-const showButton = ref(true)
+// UI state handled by gameState
 function startGame() {
   if (!showButton.value) return
 
@@ -889,12 +894,7 @@ function startGame() {
   }, 6000)
 }
 
-const modelProgress = ref<number[]>(new Array(8).fill(0));
-
-const totalProgress = computed(() => {
-  const sum = modelProgress.value.reduce((acc, curr) => acc + curr, 0);
-  return Math.floor(sum / modelProgress.value.length);
-});
+// Progress tracking handled by gameState
 
 
 onMounted(async () => {
@@ -950,17 +950,25 @@ onMounted(async () => {
   const isMobile = window.matchMedia("(max-width: 500px)").matches;
 
   // Load all models
-  const modelLoader = useModelLoader()
-  const models = await modelLoader.loadAllModels((progress, index) => {
+  const { loadAllModels } = useModelLoader()
+  const models = await loadAllModels((progress, index) => {
     modelProgress.value[index] = progress;
   })
 
   // Initialize all models using composable
-  const modelInit = useModelInitialization()
-  
-  catFeetModel = modelInit.initializeCatFeetModel(models.catFeet, scene)
-  
-  const mouseData = modelInit.initializeMouseModel(models.mouse)
+  const {
+    initializeMouseModel,
+    initializeCatFeetModel,
+    initializeRoomModel,
+    initializeDoorModels,
+    initializeShurikenModel,
+    initializeCastleModel,
+    createTrees,
+  } = useModelInitialization()
+
+  catFeetModel = initializeCatFeetModel(models.catFeet, scene)
+
+  const mouseData = initializeMouseModel(models.mouse)
   mouseModel = mouseData.mouseModel
   mouseRightBackFoot = mouseData.mouseRightBackFoot
   mouseLeftBackFoot = mouseData.mouseLeftBackFoot
@@ -971,22 +979,22 @@ onMounted(async () => {
   mouseTail = mouseData.mouseTail
   mouseTailPositionY = mouseData.mouseTailPositionY
 
-  const roomData = modelInit.initializeRoomModel(models.room)
+  const roomData = initializeRoomModel(models.room)
   roomModel = roomData.roomModel
   roomModelSize = roomData.roomModelSize
 
-  const doorData = modelInit.initializeDoorModels(models.doorLeftNob, models.doorRightNob)
+  const doorData = initializeDoorModels(models.doorLeftNob, models.doorRightNob)
   doorLeftNobModel = doorData.doorLeftNobModel
   doorRightNobModel = doorData.doorRightNobModel
   doorLeftNobBoundingBox = doorData.doorLeftNobBoundingBox
   doorRightNobBoundingBox = doorData.doorRightNobBoundingBox
 
-  const shurikenData = modelInit.initializeShurikenModel(models.shuriken)
+  const shurikenData = initializeShurikenModel(models.shuriken)
   shurikenModel = shurikenData.shurikenModel
   shurikenBoundingBox = shurikenData.shurikenBoundingBox
 
-  castleModel = modelInit.initializeCastleModel(models.castle, scene)
-  trees = modelInit.createTrees(models.fakeTree, scene, isMobile)
+  castleModel = initializeCastleModel(models.castle, scene)
+  trees = createTrees(models.fakeTree, scene, isMobile)
 
   assetsLoaded.value = true;
 
@@ -1173,8 +1181,8 @@ async function restartGame() {
 
   await moveRoomsToStartPlace()
 
-  SPEED = initialSpeed
-  speedMultiplier = 1.0
+  SPEED.value = initialSpeed
+  speedMultiplier.value = 1.0
   gameOver.value = false
   gameBackground.playbackRate = 1.0
   gameBackground.play()
