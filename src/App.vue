@@ -94,26 +94,6 @@ const {
 } = useCharacterManager()
 
 
-
-/**
- * Base
- */
-
-
-// Scene
-// Scene will be created by useThreeSetup composable
-
-// Model loading will be handled by useModelLoader composable
-
-
-/**
- * Texture
- */
-
-
-// Lights will be created by useThreeSetup composable
-
-
 // Mouse
 
 let mouseModel: THREE.Group
@@ -127,12 +107,6 @@ let mouseTail: THREE.Object3D
 let mouseTailPositionY: number
 // let debugSphere: THREE.Mesh
 let mouseBoundingSphere: THREE.Sphere
-
-
-
-
-
-
 
 
 let shurikenModel: THREE.Group;
@@ -159,9 +133,7 @@ function getNextRoomPosition() {
 let doorLeftNobModel: THREE.Group;
 let doorRightNobModel: THREE.Group;
 
-// const obj = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.1), new THREE.MeshBasicMaterial({}))
-// obj.position.y = 0.1
-// scene.add(obj)
+
 function createRoom(index: number) {
   const room = roomModel.clone()
   const door1 = doorLeftNobModel.clone()
@@ -284,8 +256,6 @@ function initRooms() {
 
 function animateCameraToCloseUp(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
 
-
-
   // Animate to close-up view
   gsap.to(camera.position, {
     y: POSITIONS.CAMERA.y,
@@ -304,30 +274,18 @@ function animateCameraToCloseUp(controls: OrbitControls, camera: THREE.Perspecti
 }
 
 
-
-
-
-
-
-
-// Distance handled by gameState
 // Game loop
 function tick(
   renderer: THREE.WebGLRenderer,
   camera: THREE.PerspectiveCamera,
   controls: OrbitControls,
-  // stats: Stats
 ) {
   const clock = new THREE.Clock()
 
   let previousTime = 0
-  const walkingSpeed = 20; // Adjust as needed
-  // const stepHeight = 0.05; // How high the feet lift
-  // const stepLength = 0.03; // How far forward/back feet mo
-
+  const walkingSpeed = 20;
 
   const SPEED_INCREASE_INTERVAL = 3; // seconds
-  // const SPEED_INCREMENT = 0.5;
   let speedIncreaseTimer = 0;
 
 
@@ -360,7 +318,6 @@ function tick(
 
       }
 
-
       speedIncreaseTimer += deltaTime;
       if (speedIncreaseTimer >= SPEED_INCREASE_INTERVAL) {
         speedMultiplier.value = speedMultiplier.value >= 4 ? 4 : speedMultiplier.value + 0.1
@@ -381,13 +338,8 @@ function tick(
     // Renderer
     renderer.render(scene, camera)
 
-    // debug
-    // stats.update()
-
     // Call tick again on the next frame
     window.requestAnimationFrame(animate)
-
-
 
   }
 
@@ -600,16 +552,10 @@ function fadeDoors(room: RoomGroup) {
 
 
 // castle 
-
-// Floor will be created in onMounted
-
-
-
 let castleModel: THREE.Group | null
 let trees: THREE.Group[] = []
 let catFeetModel: THREE.Group;
 
-// Floor will be initialized in onMounted
 let floor: THREE.Mesh<
   THREE.PlaneGeometry,
   THREE.MeshStandardMaterial | THREE.MeshBasicMaterial
@@ -620,7 +566,6 @@ let controls: OrbitControls
 let scene: THREE.Scene
 let renderer: THREE.WebGLRenderer
 
-// UI state handled by gameState
 function startGame() {
   if (!showButton.value) return
 
@@ -672,12 +617,10 @@ function startGame() {
   }, 6000)
 }
 
-// Progress tracking handled by gameState
+const { loadAllModels } = useModelLoader()
+
 onMounted(async () => {
   if (!canvas.value) return
-
-  // Debug
-  // document.body.appendChild(stats.dom)
 
   // Initialize Three.js setup
   const threeSetup = useThreeSetup(canvas)
@@ -686,8 +629,6 @@ onMounted(async () => {
   renderer = threeSetup.renderer
   controls = threeSetup.controls
 
-  // Keyboard controls will be set up after mouse model is loaded
-
   // Create floor and setup environment
   floor = createFloor(scene)
   setupSceneFog(scene)
@@ -695,7 +636,7 @@ onMounted(async () => {
   const isMobile = window.matchMedia("(max-width: 500px)").matches;
 
   // Load all models
-  const { loadAllModels } = useModelLoader()
+
   const models = await loadAllModels((progress, index) => {
     modelProgress.value[index] = progress;
   })
@@ -756,28 +697,19 @@ onMounted(async () => {
     camera,
     controls
   }
-  
+
   initializeKeyboardControls(animationParams)
   setupKeyboardControls()
 
   // Start game loop
   tick(renderer, camera, controls)
-
-
-
 })
-
-
-// https://www.zapsplat.com/music/game-music-action-retro-8-bit-style-bouncy-hard-dance-track-with-electronic-synths-and-drums/
-// need credit page
 
 
 watchEffect(() => {
   if (gameStart.value) {
     setTimeout(() => {
       cleanupEnvironment(scene, castleModel, trees)
-      castleModel = null // Allow garbage collection
-      trees = []
       removeFloorTextures(floor)
     }, 500)
 
