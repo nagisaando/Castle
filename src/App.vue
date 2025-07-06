@@ -114,6 +114,7 @@ let mouseBody: THREE.Object3D
 let mouseBodyPositionY: number
 let mouseTail: THREE.Object3D
 let mouseTailPositionY: number
+let shadow: THREE.Mesh
 // let debugSphere: THREE.Mesh
 let mouseBoundingSphere: THREE.Sphere
 
@@ -367,6 +368,14 @@ function crashMouse(): Promise<void> {
       delay: 0.7,
       onComplete: resolve
     })
+    gsap.to(shadow.scale, {
+      y: 0,
+      x: 0,
+      duration: 0.3,
+      ease: "power4.inOut",
+      delay: 0.7,
+    })
+
   })
 
 }
@@ -579,7 +588,9 @@ onMounted(async () => {
     roomModelSize,
     scene
   )
-  mouseBoundingSphere = initCharacter(mouseModel, mouseBody, scene)
+  const characterData = initCharacter(mouseModel, mouseBody, scene)
+  mouseBoundingSphere = characterData.mouseBoundingSphere
+  shadow = characterData.shadow
 
   // Initialize keyboard controls after mouse model is available
   const animationParams: MouseAnimationParams = {
@@ -589,7 +600,8 @@ onMounted(async () => {
     mouseBody,
     mouseTail,
     camera,
-    controls
+    controls,
+    shadow
   }
 
   initializeKeyboardControls(animationParams)
@@ -631,6 +643,23 @@ function moveRoomsToStartPlace(): Promise<void> {
       y: 0,
       duration: 3,
     }, 'reset')
+
+    tl.to(shadow.position, {
+      x: 0,
+      duration: 3,
+    }, 'reset')
+
+    // Reset shadow scale and opacity
+    tl.to(shadow.scale, {
+      x: 1,
+      y: 1,
+      duration: 3,
+    }, 'reset')
+
+    tl.set(shadow.material, {
+      opacity: 1,
+    }, 'reset')
+
     tl.to(controls.target, {
       x: 0,
       duration: 3,
@@ -723,21 +752,11 @@ async function restartGame() {
 
 <template>
   <canvas class="webgl" ref="canvas"></canvas>
-  
-  <GameUI 
-    :assetsLoaded="assetsLoaded"
-    :totalProgress="totalProgress"
-    :showButton="showButton"
-    :gameStart="gameStart"
-    :gameOver="gameOver"
-    :distance="distance"
-    :showGameOverMessage="showGameOverMessage"
-    @startGame="startGame"
-    @restartGame="restartGame"
-    @handleLeftMovement="handleLeftMovement"
-    @handleRightMovement="handleRightMovement"
-    @handleJump="handleJump"
-  />
+
+  <GameUI :assetsLoaded="assetsLoaded" :totalProgress="totalProgress" :showButton="showButton" :gameStart="gameStart"
+    :gameOver="gameOver" :distance="distance" :showGameOverMessage="showGameOverMessage" @startGame="startGame"
+    @restartGame="restartGame" @handleLeftMovement="handleLeftMovement" @handleRightMovement="handleRightMovement"
+    @handleJump="handleJump" />
 </template>
 
 <style>

@@ -1,8 +1,9 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
-import { POSITIONS } from "../constants";
+import { POSITIONS, JUMP_HEIGHT } from "../constants";
 import gsap from "gsap";
 import type { Ref } from "vue";
+import { useShadowManager } from "./useShadowManager";
 
 export interface KeyboardControls {
   setupKeyboardControls: () => void;
@@ -19,6 +20,7 @@ export interface MouseAnimationParams {
   mouseTail: THREE.Object3D;
   camera: THREE.PerspectiveCamera;
   controls: OrbitControls;
+  shadow: THREE.Mesh;
 }
 
 export function useKeyboardControls(
@@ -29,6 +31,8 @@ export function useKeyboardControls(
   playMoveSound: (speedMultiplier: number) => void,
   playJumpSound: (speedMultiplier: number) => void
 ): KeyboardControls & { initializeControls: (animationParams: MouseAnimationParams) => void } {
+  const { updateShadowForJump, updateShadowPosition } = useShadowManager();
+
   let mouseModel: THREE.Group;
   let mouseRightBackFoot: THREE.Object3D;
   let mouseLeftBackFoot: THREE.Object3D;
@@ -36,6 +40,7 @@ export function useKeyboardControls(
   let mouseTail: THREE.Object3D;
   let camera: THREE.PerspectiveCamera;
   let controls: OrbitControls;
+  let shadow: THREE.Mesh;
 
   const initializeControls = (animationParams: MouseAnimationParams) => {
     mouseModel = animationParams.mouseModel;
@@ -45,6 +50,7 @@ export function useKeyboardControls(
     mouseTail = animationParams.mouseTail;
     camera = animationParams.camera;
     controls = animationParams.controls;
+    shadow = animationParams.shadow;
   };
 
   const handleKeydown = (e: KeyboardEvent) => {
@@ -100,16 +106,32 @@ export function useKeyboardControls(
     const mouseModelPartSpeed = 0.2 * jumpSpeedFactor || 0.03;
 
     gsap.to(mouseModel.position, {
-      y: 0.23,
+      y: JUMP_HEIGHT,
       duration: 0.5 * jumpSpeedFactor || 0.1,
       ease: "power1.out",
+      onUpdate: () => {
+        // Update shadow based on current mouse height during jump up
+        if (shadow) {
+          updateShadowForJump(shadow, mouseModel.position.y);
+        }
+      },
       onComplete: () => {
         gsap.to(mouseModel.position, {
           y: 0, // Return to original height
           duration: 0.25 * jumpSpeedFactor || 0.05,
           ease: "bounce.out",
+          onUpdate: () => {
+            // Update shadow based on current mouse height during jump down
+            if (shadow) {
+              updateShadowForJump(shadow, mouseModel.position.y);
+            }
+          },
           onComplete: () => {
             jump.value = false;
+            // Reset shadow to normal state when landing
+            if (shadow) {
+              updateShadowForJump(shadow, 0);
+            }
           },
         });
 
@@ -192,6 +214,12 @@ export function useKeyboardControls(
       x,
       onStart: () => {
         playMoveSound(speedMultiplier.value);
+      },
+      onUpdate: () => {
+        // Update shadow x-position as mouse moves left/right
+        if (shadow) {
+          updateShadowPosition(shadow, mouseModel.position.x);
+        }
       },
     });
     gsap.to(controls.target, {
