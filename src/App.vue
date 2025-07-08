@@ -675,9 +675,7 @@ function moveRoomsToStartPlace(): Promise<void> {
     const distanceToMove = firstRoom.roomModel.position.z - initialRoomPosition
 
     let tl = gsap.timeline({
-      onComplete: () => {
-        return resolve()
-      }
+      onComplete: () => resolve()
     });
     tl.add('reset')
 
@@ -712,7 +710,7 @@ function moveRoomsToStartPlace(): Promise<void> {
       duration: 3,
     }, 'reset')
 
-    rooms.value.forEach((room, index) => {
+    rooms.value.forEach((room) => {
       tl.to(room.roomModel.position, {
         z: `-=${distanceToMove}`,
         duration: 3,
