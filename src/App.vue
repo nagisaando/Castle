@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as THREE from "three"
-import { POSITIONS, initialSpeed } from './constants'
+import { POSITIONS, SIZES, initialSpeed } from './constants'
 import type { Door, DoorGroup, RoomGroup } from './types';
 import { onMounted, useTemplateRef, watchEffect } from 'vue'
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
@@ -13,6 +13,7 @@ import { useKeyboardControls, type MouseAnimationParams } from './composables/us
 import { useEnvironment } from './composables/useEnvironment'
 import { useCharacterManager } from './composables/useCharacterManager'
 import { useRoomManager } from './composables/useRoomManager'
+import { getRandomShurikenPosition } from './utils'
 import GameUI from './components/GameUI.vue'
 
 import gsap from "gsap";
@@ -283,7 +284,6 @@ function recycleRoom() {
   roomToRecycle.doors.door3.obj.position.z = lastRoomPositionValue + 0.03
   roomToRecycle.doors.door3.obj.position.x = POSITIONS.DOOR_X_OFFSET
 
-
   // we are updating the position of shuriken based on the updated door place so we need to place after the positioning door 
   // we probably need to refactor this
   resetRoomGroup(roomToRecycle,)
@@ -315,20 +315,20 @@ function resetRoomGroup(roomGroup: RoomGroup) {
   const randomDoor = doorsToOpen[Math.floor(Math.random() * 3)]
   roomGroup.doors[randomDoor].open = true
 
-  // reset shuriken
-  const randomDoorOffset = roomGroup.roomModel.position.z + (roomGroup.doors.door2.open ? - 0.02 : + 0.03)
-  roomGroup.shuriken.obj.position.z = randomDoorOffset - 0.2
-  let randomDoorXPosition = 0 // default is second door x position
-  if (roomGroup.doors.door1.open) {
-    randomDoorXPosition = -POSITIONS.DOOR_X_OFFSET
-  } else if (roomGroup.doors.door3.open) {
-    randomDoorXPosition = POSITIONS.DOOR_X_OFFSET
-  }
+  // reset shuriken using random positioning utility
+  const openDoor = roomGroup.doors.door1.open ? roomGroup.doors.door1 :
+    roomGroup.doors.door2.open ? roomGroup.doors.door2 : roomGroup.doors.door3
+  const shurikenPos = getRandomShurikenPosition(
+    openDoor.obj.position.z,
+    openDoor.obj.position.x,
+    roomGroup.roomModel.position.z
+  )
 
-  roomGroup.shuriken.obj.position.x = randomDoorXPosition
+  roomGroup.shuriken.obj.position.z = shurikenPos.z
+  roomGroup.shuriken.obj.position.x = shurikenPos.x
 
-  // Add a shuriken in about 1 out of 4 rooms (25% chance)
-  if (Math.random() < 0.25) {
+  // Add a shuriken in about 50% chance
+  if (Math.random() < 0.5) {
     roomGroup.shuriken.show = true
     roomGroup.shuriken.obj.visible = true
   } else {
@@ -381,14 +381,21 @@ function crashMouse(): Promise<void> {
 }
 // Game over message handled by gameState
 async function checkCollisions(room: RoomGroup) {
-  if (Math.abs(room.doors.door1.obj.position.z - mouseModel.position.z) < 1) {
+  // Check door collisions with smaller range (doors are close to mouse)
+  const doorDistance = Math.abs(room.doors.door1.obj.position.z - mouseModel.position.z)
+
+  // Check shuriken collision with larger range (shurikens can be further back)
+  const shurikenDistance = room.shuriken.show ?
+    Math.abs(room.shuriken.obj.position.z - mouseModel.position.z) : Infinity
+
+  // Only proceed if we're close enough to either doors or shuriken
+  if (doorDistance < 1 || shurikenDistance < 4) {
     const doorsToCheck = [room.doors.door1, room.doors.door2, room.doors.door3]
 
     updateMouseBoundingSphere(mouseModel, mouseBody, mouseBoundingSphere)
 
-    // By applying the world matrix to the bounding box, we move the box to the correct position
-    // without recalculating its geometry from scratch. This is much faster.
-    const doorBoundingBoxes = doorsToCheck.map(door => {
+    // Create door bounding boxes only if we're close to doors
+    const obstaclesBoundingBoxes = doorDistance < 1 ? doorsToCheck.map(door => {
       // `.copy(...)`: This takes our door's unique, reusable boundingBox and resets it to the shape and size of the master blueprint.
       // It's like stamping a fresh, perfectly - sized box at the world's origin.
       // `.applyMatrix4(door.obj.matrixWorld)`: This is the magic step. It takes the box we just stamped at the origin and applies the object's
@@ -396,16 +403,17 @@ async function checkCollisions(room: RoomGroup) {
       // scales the bounding box from the origin to the object's final
       // position and orientation in the 3D world.
       return door.boundingBox.copy(door.obj.userData.templateBoundingBox).applyMatrix4(door.obj.matrixWorld)
-    })
+    }) : []
 
-    if (room.shuriken.show) {
+    // Add shuriken bounding box only if we're close to shuriken
+    if (room.shuriken.show && shurikenDistance < 4) {
       const shurikenBoundingBox = room.shuriken.boundingBox.copy(room.shuriken.obj.userData.templateBoundingBox).applyMatrix4(room.shuriken.obj.matrixWorld)
-      doorBoundingBoxes.push(shurikenBoundingBox)
+      obstaclesBoundingBoxes.push(shurikenBoundingBox)
     }
 
     mouseModelBoundingBox.setFromObject(mouseModel)
 
-    if (doorBoundingBoxes.some(boundBox => mouseBoundingSphere.intersectsBox(boundBox))) {
+    if (obstaclesBoundingBoxes.some(boundBox => mouseBoundingSphere.intersectsBox(boundBox))) {
       gameOver.value = true
       await crashMouse()
       showGameOverMessage.value = true
@@ -416,7 +424,6 @@ async function checkCollisions(room: RoomGroup) {
 
 function handleDoorOpening(door: DoorGroup) {
   const openDoor = (doorPart: Door, xOffset: number) => {
-
     if (!doorPart.opened && doorPart.open && doorPart.obj.position.z > -1) {
       doorPart.opened = true
       gsap.to(doorPart.obj.position, {
@@ -625,16 +632,52 @@ watchEffect(() => {
   }
 })
 
+function isMouseNearCurrentRoom(): boolean {
+  const currentRoom = rooms.value[roomRecycleIndex.value]
+  const mouseHeadZ = mouseModel.position.z // mouse's head tip will be position.z (because I positioned bad in blender!!!!)
+  const roomBackZ = currentRoom.roomModel.position.z // room back will be position.z (because I positioned bad in blender!!!!)
+  const roomFrontZ = roomBackZ + SIZES.FLOOR.height // Room spans from roomBackZ to roomBackZ+6 (6 units deep)
+
+  // Check if mouse is inside the room OR within 0.8 units of room back edge
+  const insideRoom = mouseHeadZ > roomBackZ && mouseHeadZ < roomFrontZ
+  const nearRoomBack = mouseHeadZ < roomBackZ && Math.abs(mouseHeadZ - roomBackZ) < 0.8
+
+  return insideRoom || nearRoomBack
+}
+
 function moveRoomsToStartPlace(): Promise<void> {
   return new Promise((resolve) => {
     const initialRoomPosition = -0.8
+
+    // if the mouse is not on the first room, we recycle the first room and move it to the back. 
+    // this is important to make the smooth transition for the replay animation
+    // Scenario 1 - Mouse still in first room:
+    // - Mouse crashed early, still in rooms.value[roomRecycleIndex.value]
+    // - No recycling needed
+    // - Animation moves everything back to starting position smoothly
+
+    // Scenario 2 - Mouse progressed to later rooms:
+    // - Mouse has moved beyond the current front room
+    // - Without recycling: Animation would try to move the mouse back to a room that's
+    // behind it
+    // - With recycling: Brings the room the mouse is actually in to the front position
+    // - Result: Smooth animation where mouse moves back to the "new" front room
+
+    if (!isMouseNearCurrentRoom()) {
+      recycleRoom()
+    }
     const firstRoomIndex = roomRecycleIndex.value
+    const secondRoomIndex = (roomRecycleIndex.value + 1) % rooms.value.length
+    const thirdRoomIndex = (roomRecycleIndex.value + 2) % rooms.value.length
     const firstRoom = rooms.value[roomRecycleIndex.value];
+
     distance.value = 0
     const distanceToMove = firstRoom.roomModel.position.z - initialRoomPosition
 
     let tl = gsap.timeline({
-      onComplete: () => resolve()
+      onComplete: () => {
+        return resolve()
+      }
     });
     tl.add('reset')
 
@@ -695,20 +738,26 @@ function moveRoomsToStartPlace(): Promise<void> {
           duration: 3,
         }, 'reset')
 
-      let openDoorPosition: number = 0
-      if (room.doors.door1.open) openDoorPosition = roomPosition + 0.03;
-      else if (room.doors.door2.open) openDoorPosition = roomPosition - 0.02;
-      else if (room.doors.door3.open) openDoorPosition = roomPosition + 0.03;
+      // Make all shurikens invisible immediately. This is for smooth replay transition 
+      room.shuriken.obj.visible = false
 
-      tl.to(room.shuriken.obj.position, {
-        z: openDoorPosition - 0.2,
-        duration: 3,
-      }, 'reset')
-
-      if (index === firstRoomIndex) {
-        resetRoomGroup(room)
-      }
     })
+
+    // reset room state and position shurikens after door animations complete (3 seconds)
+    tl.call(() => {
+      rooms.value.forEach((room, index) => {
+        resetRoomGroup(room)
+
+        // Show shuriken with 50% of possibility PLUS no first three rooms
+        if (index !== firstRoomIndex && index !== secondRoomIndex && index !== thirdRoomIndex && Math.random() > 0.5) {
+          room.shuriken.show = true
+          room.shuriken.obj.visible = true
+        } else {
+          room.shuriken.show = false
+          room.shuriken.obj.visible = false
+        }
+      })
+    }, [], 'reset+=3')  // Execute exactly when door animations finish
   })
 
 

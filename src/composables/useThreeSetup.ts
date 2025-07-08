@@ -19,10 +19,10 @@ export function useThreeSetup(
   scene.background = new THREE.Color().setHex(0x112233);
 
   // Lights
-  const ambientLight = new THREE.AmbientLight(0xbda8a8, 3);
+  const ambientLight = new THREE.AmbientLight(0xe4dcdc, 3);
   scene.add(ambientLight);
 
-  const directionalLight = new THREE.DirectionalLight(0xbda8a8, 3);
+  const directionalLight = new THREE.DirectionalLight(0xe4dcdc, 3);
   directionalLight.position.set(1, 0, 1);
   scene.add(directionalLight);
 

@@ -1,24 +1,25 @@
-import * as THREE from 'three'
-import { ref, computed, type Ref } from 'vue'
-import { POSITIONS } from '../constants'
-import type { RoomGroup } from '../types'
+import * as THREE from "three";
+import { ref, computed, type Ref } from "vue";
+import { POSITIONS } from "../constants";
+import { getRandomShurikenPosition } from "../utils";
+import type { RoomGroup } from "../types";
 
 export function useRoomManager(
   roomBufferSize: number,
   roomRecycleIndex: Ref<number>,
   lastRoomIndex: Ref<number>
 ) {
-  const rooms = ref<RoomGroup[]>(new Array(roomBufferSize))
+  const rooms = ref<RoomGroup[]>(new Array(roomBufferSize));
 
   // Room position computed property
   const lastRoomPosition = computed(() => {
-    return rooms.value[lastRoomIndex.value]?.roomModel.position.z ?? 0
-  })
+    return rooms.value[lastRoomIndex.value]?.roomModel.position.z ?? 0;
+  });
 
   const getNextRoomPosition = (roomModelSize: THREE.Vector3) => {
-    if (lastRoomIndex.value === -1) return -3 // Initial position
-    return lastRoomPosition.value - roomModelSize.z + 0.1
-  }
+    if (lastRoomIndex.value === -1) return -3; // Initial position
+    return lastRoomPosition.value - roomModelSize.z + 0.1;
+  };
 
   const createRoom = (
     index: number,
@@ -32,46 +33,46 @@ export function useRoomManager(
     roomModelSize: THREE.Vector3,
     scene: THREE.Scene
   ) => {
-    const room = roomModel.clone()
-    const door1 = doorLeftNobModel.clone()
+    const room = roomModel.clone();
+    const door1 = doorLeftNobModel.clone();
     // This gets the master blueprint for the door's shape. This blueprint is centered at the origin(0, 0, 0) and has no rotation.It just defines the size.
-    door1.userData.templateBoundingBox = doorLeftNobBoundingBox
-    const door2 = doorLeftNobModel.clone()
-    door2.userData.templateBoundingBox = doorLeftNobBoundingBox
-    const door3 = doorRightNobModel.clone()
-    door3.userData.templateBoundingBox = doorRightNobBoundingBox
+    door1.userData.templateBoundingBox = doorLeftNobBoundingBox;
+    const door2 = doorLeftNobModel.clone();
+    door2.userData.templateBoundingBox = doorLeftNobBoundingBox;
+    const door3 = doorRightNobModel.clone();
+    door3.userData.templateBoundingBox = doorRightNobBoundingBox;
 
-    const shuriken = shurikenModel.clone()
-    shuriken.userData.templateBoundingBox = shurikenBoundingBox
+    const shuriken = shurikenModel.clone();
+    shuriken.userData.templateBoundingBox = shurikenBoundingBox;
 
     if (index !== 0) {
-      room.visible = false
-      door1.visible = false
-      door2.visible = false
-      door3.visible = false
-      shuriken.visible = false
+      room.visible = false;
+      door1.visible = false;
+      door2.visible = false;
+      door3.visible = false;
+      shuriken.visible = false;
     }
 
-    const zPosition = getNextRoomPosition(roomModelSize)
+    const zPosition = getNextRoomPosition(roomModelSize);
 
-    room.position.set(0, 0, zPosition)
+    room.position.set(0, 0, zPosition);
 
-    door1.position.y = POSITIONS.DOOR_Y
-    door1.position.z = zPosition + 0.03
-    door1.position.x = -POSITIONS.DOOR_X_OFFSET
+    door1.position.y = POSITIONS.DOOR_Y;
+    door1.position.z = zPosition + 0.03;
+    door1.position.x = -POSITIONS.DOOR_X_OFFSET;
 
-    door2.position.y = POSITIONS.DOOR_Y
-    door2.position.z = zPosition - 0.02
+    door2.position.y = POSITIONS.DOOR_Y;
+    door2.position.z = zPosition - 0.02;
 
-    door3.position.y = POSITIONS.DOOR_Y
-    door3.position.z = zPosition + 0.03
-    door3.position.x = POSITIONS.DOOR_X_OFFSET
+    door3.position.y = POSITIONS.DOOR_Y;
+    door3.position.z = zPosition + 0.03;
+    door3.position.x = POSITIONS.DOOR_X_OFFSET;
 
-    scene.add(room)
-    scene.add(door1)
-    scene.add(door2)
-    scene.add(door3)
-    scene.add(shuriken)
+    scene.add(room);
+    scene.add(door1);
+    scene.add(door2);
+    scene.add(door3);
+    scene.add(shuriken);
 
     const roomGroup: RoomGroup = {
       doors: {
@@ -79,54 +80,60 @@ export function useRoomManager(
           obj: door1,
           open: false,
           boundingBox: doorLeftNobBoundingBox.clone(),
-          opened: false
+          opened: false,
         },
         door2: {
           obj: door2,
           open: false,
           boundingBox: doorLeftNobBoundingBox.clone(),
-          opened: false
+          opened: false,
         },
         door3: {
           obj: door3,
           open: false,
           boundingBox: doorRightNobBoundingBox.clone(),
-          opened: false
+          opened: false,
         },
       },
       shuriken: {
         obj: shuriken,
         boundingBox: shurikenBoundingBox.clone(),
-        show: false
+        show: false,
       },
       hide: false,
       roomModel: room,
-    }
+    };
 
     // Randomly open one door
-    const doorsToOpen = ['door1', 'door2', 'door3'] as const
-    const randomDoor = doorsToOpen[Math.floor(Math.random() * 3)]
-    roomGroup.doors[randomDoor].open = true
+    const doorsToOpen = ["door1", "door2", "door3"] as const;
+    const randomDoor = doorsToOpen[Math.floor(Math.random() * 3)];
+    roomGroup.doors[randomDoor].open = true;
 
-    // place the shuriken behind the door to open
-    shuriken.position.z = roomGroup.doors[randomDoor].obj.position.z - 0.2
-    shuriken.position.x = roomGroup.doors[randomDoor].obj.position.x
+    // place the shuriken using random positioning utility
+    const shurikenPos = getRandomShurikenPosition(
+      roomGroup.doors[randomDoor].obj.position.z,
+      roomGroup.doors[randomDoor].obj.position.x,
+      room.position.z
+    );
+    shuriken.position.z = shurikenPos.z;
+    shuriken.position.x = shurikenPos.x;
 
-    // Add a shuriken in about 1 out of 4 rooms (25% chance)
-    if (Math.random() < 0.25) {
-      roomGroup.shuriken.show = true
+    // Add a shuriken in about 50% of chance
+    if (index >= 3 && Math.random() < 0.5) {
+      roomGroup.shuriken.show = true;
     } else {
-      roomGroup.shuriken.show = false
-      // if shuriken is in the first index AND if Math.random() is bigger than 0.25, 
-      // we will hide shuriken
-      shuriken.visible = false
+      roomGroup.shuriken.show = false;
     }
+    // we don't make shuriken visible yet because it is in a creation phase, and the user is looking at the castle currently
+    // making the shuriken visible will make them appear outside of the castle.
+    // we will handle the visibility in startGame()
+    shuriken.visible = false;
 
     // Update ring buffer
-    rooms.value[roomRecycleIndex.value] = roomGroup
-    lastRoomIndex.value = roomRecycleIndex.value
-    roomRecycleIndex.value = (roomRecycleIndex.value + 1) % rooms.value.length
-  }
+    rooms.value[roomRecycleIndex.value] = roomGroup;
+    lastRoomIndex.value = roomRecycleIndex.value;
+    roomRecycleIndex.value = (roomRecycleIndex.value + 1) % rooms.value.length;
+  };
 
   const initRooms = (
     roomModel: THREE.Group,
@@ -151,15 +158,15 @@ export function useRoomManager(
         shurikenBoundingBox,
         roomModelSize,
         scene
-      )
+      );
     }
-  }
+  };
 
   return {
     rooms,
     lastRoomPosition,
     getNextRoomPosition,
     createRoom,
-    initRooms
-  }
+    initRooms,
+  };
 }
