@@ -52,7 +52,7 @@ button {
   opacity: 1;
 }
 button:hover {
-  opacity: 0.8;
+  transform: translateY(-2px);
 }
 button:focus,
 button:focus-visible {

@@ -2,7 +2,7 @@
 import * as THREE from "three"
 import { POSITIONS, SIZES, initialSpeed } from './constants'
 import type { Door, DoorGroup, RoomGroup } from './types';
-import { onMounted, useTemplateRef, watchEffect } from 'vue'
+import { onBeforeMount, onMounted, useTemplateRef, watchEffect, ref } from 'vue'
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
 import { useThreeSetup } from './composables/useThreeSetup'
 import { useModelLoader } from './composables/useModelLoader'
@@ -17,9 +17,13 @@ import { getRandomShurikenPosition } from './utils'
 import GameUI from './components/GameUI.vue'
 
 import gsap from "gsap";
+import { getLeaderBoard, type LeaderboardEntry } from "./api";
 
 
 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+// Leaderboard data
+const leaderboardData = ref<LeaderboardEntry[]>([])
 
 // Canvas
 const canvas = useTemplateRef('canvas')
@@ -413,11 +417,17 @@ async function checkCollisions(room: RoomGroup) {
 
     mouseModelBoundingBox.setFromObject(mouseModel)
 
-    if (obstaclesBoundingBoxes.some(boundBox => mouseBoundingSphere.intersectsBox(boundBox))) {
-      gameOver.value = true
-      await crashMouse()
-      showGameOverMessage.value = true
+    try {
+      if (obstaclesBoundingBoxes.some(boundBox => mouseBoundingSphere.intersectsBox(boundBox))) {
+        gameOver.value = true
+        const [leaderboard] = await Promise.all([getLeaderBoard(), crashMouse()])
+        leaderboardData.value = leaderboard
+        showGameOverMessage.value = true
+      }
+    } catch (err) {
+      console.log(err)
     }
+
   }
 }
 
@@ -801,9 +811,9 @@ async function restartGame() {
   <canvas class="webgl" ref="canvas"></canvas>
 
   <GameUI :assetsLoaded="assetsLoaded" :totalProgress="totalProgress" :showButton="showButton" :gameStart="gameStart"
-    :gameOver="gameOver" :distance="distance" :showGameOverMessage="showGameOverMessage" @startGame="startGame"
-    @restartGame="restartGame" @handleLeftMovement="handleLeftMovement" @handleRightMovement="handleRightMovement"
-    @handleJump="handleJump" />
+    :gameOver="gameOver" :distance="distance" :showGameOverMessage="showGameOverMessage" :leaderBoard="leaderboardData"
+    @startGame="startGame" @restartGame="restartGame" @handleLeftMovement="handleLeftMovement"
+    @handleRightMovement="handleRightMovement" @handleJump="handleJump" />
 </template>
 
 <style>

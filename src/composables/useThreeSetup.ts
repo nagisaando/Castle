@@ -59,7 +59,6 @@ export function useThreeSetup(
   const renderer = new THREE.WebGLRenderer({
     canvas: canvas.value as HTMLCanvasElement,
     antialias: !isMobile, // Disable antialias on mobile for performance concern
-    powerPreference: "high-performance",
   });
   renderer.setSize(sizes.width, sizes.height);
   renderer.setPixelRatio(sizes.pixelRatio);
