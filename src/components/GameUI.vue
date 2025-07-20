@@ -40,7 +40,7 @@ const bestScore = computed(() => {
 
 const distanceText = useTemplateRef('distanceText')
 
-watch(() => Math.floor(props.distance), (newDistance, oldDistance) => {
+watch(() => props.distance, (newDistance, oldDistance) => {
   if (newDistance % 10 === 0 && newDistance !== 0 && newDistance !== oldDistance) {
     gsap.to(distanceText.value, {
       color: '#fd9a00',
@@ -55,7 +55,7 @@ watch(() => Math.floor(props.distance), (newDistance, oldDistance) => {
           ease: "elastic.out(0.8,0.3)",
           y: 0,
           scale: 1,
-          color: 'rgba(255, 255, 255, 0.87)',
+          color: 'white',
           rotate: 0
         }
         )
@@ -86,9 +86,9 @@ watch(() => Math.floor(props.distance), (newDistance, oldDistance) => {
       </div>
     </div>
 
-    <p v-if="!gameOver && gameStart" ref="distanceText" class="text-6xl text-center mt-26 font-bold">{{
-      Math.floor(distance)
-      }}</p>
+    <p v-if="!gameOver && gameStart" ref="distanceText" class="text-6xl text-center mt-26 font-bold text-white">{{
+      distance
+    }}</p>
 
     <p class="absolute bottom-4 right-8 text-white">Sound by <a href="https://www.zapsplat.com/" target="_blank"
         class="hover:text-amber-500">ZapSplat</a></p>

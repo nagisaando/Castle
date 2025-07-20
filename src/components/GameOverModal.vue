@@ -28,7 +28,7 @@ const showForm = ref(false)
 const submitted = ref(false)
 
 function handleSubmit() {
-  const distance = Math.floor(props.distance)
+  const distance = props.distance
 
   localStorage.setItem('username', username.value)
   emit('submitScore', username.value, distance)
@@ -103,7 +103,7 @@ function restartGame() {
     <div class="bg-[#f1e8e0] py-8 px-15 w-4/5 mx-auto rounded-2xl">
       <div>
         <p v-if="bestScore" class="text-amber-500 text-4xl font-bold">NEW HIGH SCORE</p>
-        <p class="text-3xl mb-2 text-stone-800 font-bold">Your score: {{ Math.floor(distance) }}
+        <p class="text-3xl mb-2 text-stone-800 font-bold">Your score: {{ distance }}
         </p>
         <p class="mb-2 text-sm text-stone-800 font-medium">Top 10 Paw Dodgers</p>
         <ul ref="leaderBoardListEL"

@@ -820,9 +820,10 @@ async function restartGame() {
   <canvas class="webgl" ref="canvas"></canvas>
 
   <GameUI :assetsLoaded="assetsLoaded" :totalProgress="totalProgress" :showButton="showButton" :gameStart="gameStart"
-    :gameOver="gameOver" :distance="distance" :showGameOverMessage="showGameOverMessage" :leaderBoard="leaderboardData"
-    @startGame="startGame" @restartGame="restartGame" @handleLeftMovement="handleLeftMovement"
-    @handleRightMovement="handleRightMovement" @handleJump="handleJump" @submitScore="handleSubmitScore"
+    :gameOver="gameOver" :distance="Math.floor(distance)" :showGameOverMessage="showGameOverMessage"
+    :leaderBoard="leaderboardData" @startGame="startGame" @restartGame="restartGame"
+    @handleLeftMovement="handleLeftMovement" @handleRightMovement="handleRightMovement" @handleJump="handleJump"
+    @submitScore="handleSubmitScore"
     @updateLeaderboard="(updatedLeaderboard) => leaderboardData = updatedLeaderboard" />
 </template>
 
