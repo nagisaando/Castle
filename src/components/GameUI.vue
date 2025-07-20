@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, useTemplateRef, watch } from 'vue'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import gsap from 'gsap'
 import type { LeaderboardEntry } from '../api'
 import GameOverModal from './GameOverModal.vue'
@@ -20,14 +20,26 @@ interface Emits {
   handleLeftMovement: []
   handleRightMovement: []
   handleJump: []
-  submitScore: []
+  submitScore: [username: string, score: number],
+  updateLeaderboard: [LeaderboardEntry[]]
 }
 
 const props = defineProps<Props>()
-defineEmits<Emits>()
+const emit = defineEmits<Emits>()
+const bestScore = computed(() => {
+  // If leaderboard is empty or has less than 10 scores, it's always a high score
+  if (!props.leaderBoard.length || props.leaderBoard.length < 10) {
+    return true
+  }
 
-const bestScore = ref(false)
+  // Check if current score is higher than the lowest score in top 10
+  const lowestScore = props.leaderBoard[props.leaderBoard.length -
+    1]?.score || 0
+  return props.distance > lowestScore
+})
+
 const distanceText = useTemplateRef('distanceText')
+
 watch(() => Math.floor(props.distance), (newDistance, oldDistance) => {
   if (newDistance % 10 === 0 && newDistance !== 0 && newDistance !== oldDistance) {
     gsap.to(distanceText.value, {
@@ -82,7 +94,8 @@ watch(() => Math.floor(props.distance), (newDistance, oldDistance) => {
         class="hover:text-amber-500">ZapSplat</a></p>
 
     <GameOverModal :show="showGameOverMessage" :distance="distance" :best-score="bestScore" :leader-board="leaderBoard"
-      @restart-game="$emit('restartGame')" @submit-score="$emit('submitScore')" />
+      @restart-game="emit('restartGame')" @submit-score="(username, score) => emit('submitScore', username, score)"
+      @updateLeaderboard="(leaderboard) => emit('updateLeaderboard', leaderboard)" />
 
     <!-- this is ui for mobile -->
     <div class="md:hidden absolute bottom-[10%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 block"

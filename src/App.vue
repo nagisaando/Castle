@@ -17,7 +17,7 @@ import { getRandomShurikenPosition } from './utils'
 import GameUI from './components/GameUI.vue'
 
 import gsap from "gsap";
-import { getLeaderBoard, type LeaderboardEntry } from "./api";
+import { getLeaderBoard, postScore, type LeaderboardEntry } from "./api";
 
 
 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -776,6 +776,15 @@ function moveRoomsToStartPlace(): Promise<void> {
 }
 
 
+async function handleSubmitScore(username: string, score: number) {
+  try {
+    await postScore(username, score)
+  } catch (error) {
+    console.error('Failed to submit score:', error)
+    // You could add error handling UI here if needed
+  }
+}
+
 async function restartGame() {
   showGameOverMessage.value = false
 
@@ -813,7 +822,8 @@ async function restartGame() {
   <GameUI :assetsLoaded="assetsLoaded" :totalProgress="totalProgress" :showButton="showButton" :gameStart="gameStart"
     :gameOver="gameOver" :distance="distance" :showGameOverMessage="showGameOverMessage" :leaderBoard="leaderboardData"
     @startGame="startGame" @restartGame="restartGame" @handleLeftMovement="handleLeftMovement"
-    @handleRightMovement="handleRightMovement" @handleJump="handleJump" />
+    @handleRightMovement="handleRightMovement" @handleJump="handleJump" @submitScore="handleSubmitScore"
+    @updateLeaderboard="(updatedLeaderboard) => leaderboardData = updatedLeaderboard" />
 </template>
 
 <style>
