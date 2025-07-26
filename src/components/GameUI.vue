@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef, watch } from 'vue'
+import { computed, useTemplateRef, watch } from 'vue'
 import gsap from 'gsap'
 import type { LeaderboardEntry } from '../api'
 import GameOverModal from './GameOverModal.vue'
+
 interface Props {
   assetsLoaded: boolean
   totalProgress: number
@@ -17,9 +18,6 @@ interface Props {
 interface Emits {
   startGame: []
   restartGame: []
-  handleLeftMovement: []
-  handleRightMovement: []
-  handleJump: []
   submitScore: [username: string, score: number],
   updateLeaderboard: [LeaderboardEntry[]]
 }
@@ -63,10 +61,11 @@ watch(() => props.distance, (newDistance, oldDistance) => {
     })
   }
 })
+
 </script>
 
 <template>
-  <div class="absolute inset-0">
+  <div ref="layer" class="absolute inset-0">
     <div v-if="!assetsLoaded"
       class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full text-center text-white text-3xl md:text-3xl">
       <p>Loading... {{ totalProgress }}%</p>
@@ -88,7 +87,7 @@ watch(() => props.distance, (newDistance, oldDistance) => {
 
     <p v-if="!gameOver && gameStart" ref="distanceText" class="text-6xl text-center mt-26 font-bold text-white">{{
       distance
-    }}</p>
+      }}</p>
 
     <p class="absolute bottom-4 right-8 text-white">Sound by <a href="https://www.zapsplat.com/" target="_blank"
         class="hover:text-amber-500">ZapSplat</a></p>
@@ -96,17 +95,6 @@ watch(() => props.distance, (newDistance, oldDistance) => {
     <GameOverModal :show="showGameOverMessage" :distance="distance" :best-score="bestScore" :leader-board="leaderBoard"
       @restart-game="emit('restartGame')" @submit-score="(username, score) => emit('submitScore', username, score)"
       @updateLeaderboard="(leaderboard) => emit('updateLeaderboard', leaderboard)" />
-
-    <!-- this is ui for mobile -->
-    <div class="md:hidden absolute bottom-[10%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 block"
-      v-if="gameStart && !gameOver">
-      <button @click="$emit('handleLeftMovement')"
-        class="p-4 text-2xl border-2 border-white bg-transparent text-white">&#9664;</button>
-      <button @click="$emit('handleJump')"
-        class="p-4 text-2xl border-2 border-white bg-transparent text-white">🔼</button>
-      <button @click="$emit('handleRightMovement')"
-        class="p-4 text-2xl border-2 border-white bg-transparent text-white"> &#9654;</button>
-    </div>
   </div>
 </template>
 

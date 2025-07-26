@@ -2,17 +2,19 @@
 import * as THREE from "three"
 import { POSITIONS, SIZES, initialSpeed } from './constants'
 import type { Door, DoorGroup, RoomGroup } from './types';
-import { onBeforeMount, onMounted, useTemplateRef, watchEffect, ref } from 'vue'
+import { onMounted, useTemplateRef, watchEffect, ref, type ComponentPublicInstance } from 'vue'
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
 import { useThreeSetup } from './composables/useThreeSetup'
 import { useModelLoader } from './composables/useModelLoader'
 import { useModelInitialization } from './composables/useModelInitialization'
 import { useGameState } from './composables/useGameState'
 import { useAudioManager } from './composables/useAudioManager'
-import { useKeyboardControls, type MouseAnimationParams } from './composables/useKeyboardControls'
+import { useMouseMovement, type MouseAnimationParams } from './composables/useMouseMovement'
+import { useKeyboard } from './composables/useKeyboard'
 import { useEnvironment } from './composables/useEnvironment'
 import { useCharacterManager } from './composables/useCharacterManager'
 import { useRoomManager } from './composables/useRoomManager'
+import { useMobileGestures } from './composables/useMobileGestures'
 import { getRandomShurikenPosition } from './utils'
 import GameUI from './components/GameUI.vue'
 
@@ -27,10 +29,12 @@ const leaderboardData = ref<LeaderboardEntry[]>([])
 
 // Canvas
 const canvas = useTemplateRef('canvas')
+const gameUI = useTemplateRef<InstanceType<typeof GameUI> | null>('game-ui')
+
+
 
 // Initialize game state
-const isMobile = window.matchMedia("(max-width: 500px)").matches;
-const roomBufferSize = isMobile ? 3 : 6;
+const roomBufferSize = 4;
 const {
   // Core game state
   gameOver,
@@ -70,20 +74,38 @@ const {
   gameBackground
 } = useAudioManager()
 
-// Initialize keyboard controls at root level
+// Initialize mouse movement controls
 const {
-  setupKeyboardControls,
   handleLeftMovement,
   handleRightMovement,
   handleJump,
-  initializeControls: initializeKeyboardControls
-} = useKeyboardControls(
-  gameStart,
-  gameOver,
+  initializeMovement
+} = useMouseMovement(
   jump,
   speedMultiplier,
   playMoveSound,
   playJumpSound
+)
+
+// Initialize keyboard controls
+const { setupKeyboardControls } = useKeyboard(
+  gameStart,
+  gameOver,
+  jump,
+  handleLeftMovement,
+  handleRightMovement,
+  handleJump
+)
+
+// Initialize mobile gestures
+const { setupMobileGestures } = useMobileGestures(
+  gameUI,
+  handleJump,
+  handleLeftMovement,
+  handleRightMovement,
+  gameStart,
+  gameOver,
+  jump
 )
 
 // Initialize environment setup
@@ -621,8 +643,9 @@ onMounted(async () => {
     shadow
   }
 
-  initializeKeyboardControls(animationParams)
+  initializeMovement(animationParams)
   setupKeyboardControls()
+  setupMobileGestures()
 
   // Start game loop
   tick(renderer, camera, controls)
@@ -819,11 +842,10 @@ async function restartGame() {
 <template>
   <canvas class="webgl" ref="canvas"></canvas>
 
-  <GameUI :assetsLoaded="assetsLoaded" :totalProgress="totalProgress" :showButton="showButton" :gameStart="gameStart"
-    :gameOver="gameOver" :distance="Math.floor(distance)" :showGameOverMessage="showGameOverMessage"
-    :leaderBoard="leaderboardData" @startGame="startGame" @restartGame="restartGame"
-    @handleLeftMovement="handleLeftMovement" @handleRightMovement="handleRightMovement" @handleJump="handleJump"
-    @submitScore="handleSubmitScore"
+  <GameUI ref="game-ui" :assetsLoaded="assetsLoaded" :totalProgress="totalProgress" :showButton="showButton"
+    :gameStart="gameStart" :gameOver="gameOver" :distance="Math.floor(distance)"
+    :showGameOverMessage="showGameOverMessage" :leaderBoard="leaderboardData" @startGame="startGame"
+    @restartGame="restartGame" @submitScore="handleSubmitScore"
     @updateLeaderboard="(updatedLeaderboard) => leaderboardData = updatedLeaderboard" />
 </template>
 
