@@ -78,16 +78,30 @@ watch(() => props.distance, (newDistance, oldDistance) => {
         Start</button>
       <div class="flex justify-center">
         <div class="text-sm text-left mt-8 text-white">
-          <p class="py-2"><span class="border border-white px-4 py-2 mr-4">&lt;</span> move left</p>
-          <p class="py-2 mt-0.5"><span class="border border-white px-4 py-2 mr-4">&gt;</span> move right</p>
-          <p class="py-2 mt-0.5"><span class="border border-white px-4 py-2 mr-4">&#x22C0;</span> jump</p>
+          <p class="py-2">
+            <span class="hidden md:inline border border-white px-4 py-2 mr-4">&lt;</span>
+            <span class="inline-block  md:hidden border border-white px-4 py-2 mr-4 w-[138px]">SWIPE LEFT
+              &lt;&lt;</span>
+            move left
+          </p>
+          <p class="py-2 mt-0.5">
+            <span class="hidden md:inline border border-white px-4 py-2 mr-4">&gt;</span>
+            <span class="inline-block md:hidden border border-white px-4 py-2 mr-4 w-[138px]">SWIPE RIGHT
+              &gt;&gt;</span>
+            move right
+          </p>
+          <p class="py-2 mt-0.5">
+            <span class="hidden md:inline border border-white px-4 py-2 mr-4">&#x22C0;</span>
+            <span class="inline-block md:hidden border border-white px-4 py-2 mr-4 w-[138px]">SWIPE TOP &#x22C0;</span>
+            jump
+          </p>
         </div>
       </div>
     </div>
 
     <p v-if="!gameOver && gameStart" ref="distanceText" class="text-6xl text-center mt-26 font-bold text-white">{{
       distance
-      }}</p>
+    }}</p>
 
     <p class="absolute bottom-4 right-8 text-white">Sound by <a href="https://www.zapsplat.com/" target="_blank"
         class="hover:text-amber-500">ZapSplat</a></p>
