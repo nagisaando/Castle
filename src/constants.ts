@@ -9,7 +9,7 @@ export const JUMP_HEIGHT = 0.23;
 
 export const POSITIONS = {
   DOOR_X_OFFSET: SIZES.FLOOR.width / 3,
-  DOOR_Y: 0.08,
+  DOOR_Y: 0,
   MOUSE_Y: 0,
   MOUSE_START_Z: 4,
   MOUSE_X: 0.8,

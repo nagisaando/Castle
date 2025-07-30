@@ -2,13 +2,8 @@ import * as THREE from "three";
 import { DRACOLoader, GLTFLoader } from "three/examples/jsm/Addons.js";
 
 export interface ModelLoaderSetup {
-  loadModel: (
-    url: string,
-    onProgress: (progress: number) => void
-  ) => Promise<THREE.Group>;
-  loadAllModels: (
-    onProgress: (progress: number, index: number) => void
-  ) => Promise<LoadedModels>;
+  loadModel: (url: string, onProgress: (progress: number) => void) => Promise<THREE.Group>;
+  loadAllModels: (onProgress: (progress: number, index: number) => void) => Promise<LoadedModels>;
 }
 
 export interface LoadedModels {
@@ -29,10 +24,7 @@ export function useModelLoader(): ModelLoaderSetup {
   dracoLoader.setDecoderPath("/draco/");
   gltfLoader.setDRACOLoader(dracoLoader);
 
-  const loadModel = (
-    url: string,
-    onProgress: (progress: number) => void
-  ): Promise<THREE.Group> => {
+  const loadModel = (url: string, onProgress: (progress: number) => void): Promise<THREE.Group> => {
     return new Promise((resolve, reject) => {
       gltfLoader.load(
         url,
@@ -55,8 +47,8 @@ export function useModelLoader(): ModelLoaderSetup {
     onProgress: (progress: number, index: number) => void
   ): Promise<LoadedModels> => {
     const modelsToLoad = [
-      "/model/left-door-nob/door.gltf",
-      "/model/right-door-nob/door.gltf",
+      "/model/left-door-nob/door.glb",
+      "/model/right-door-nob/door.glb",
       "/model/castle/castle.gltf",
       "/model/interior/interior.gltf",
       "/model/tree-fake/tree-fake.gltf",
@@ -65,22 +57,14 @@ export function useModelLoader(): ModelLoaderSetup {
       "/model/cat-feet/cat-feet.gltf",
     ];
 
-    const [
-      doorLeftNob,
-      doorRightNob,
-      castle,
-      room,
-      fakeTree,
-      mouse,
-      shuriken,
-      catFeet,
-    ] = await Promise.all(
-      modelsToLoad.map((url, index) =>
-        loadModel(url, (progress) => {
-          onProgress(progress, index);
-        })
-      )
-    );
+    const [doorLeftNob, doorRightNob, castle, room, fakeTree, mouse, shuriken, catFeet] =
+      await Promise.all(
+        modelsToLoad.map((url, index) =>
+          loadModel(url, (progress) => {
+            onProgress(progress, index);
+          })
+        )
+      );
 
     return {
       doorLeftNob,
