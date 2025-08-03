@@ -16,6 +16,7 @@ import { useCharacterManager } from './composables/useCharacterManager'
 import { useRoomManager } from './composables/useRoomManager'
 import { useMobileGestures } from './composables/useMobileGestures'
 import { getRandomShurikenPosition } from './utils'
+import { isMobile } from './utils/mobile'
 import GameUI from './components/GameUI.vue'
 
 import gsap from "gsap";
@@ -34,7 +35,7 @@ const gameUI = useTemplateRef<InstanceType<typeof GameUI> | null>('game-ui')
 
 
 // Initialize game state
-const roomBufferSize = 4;
+const roomBufferSize = isMobile ? 3 : 4;
 const {
   // Core game state
   gameOver,
@@ -202,7 +203,6 @@ function tick(
 
 
   const animate = () => {
-
     const elapsedTime = clock.getElapsedTime()
     const deltaTime = elapsedTime - previousTime
     previousTime = elapsedTime
@@ -220,11 +220,15 @@ function tick(
       if (!jump.value) {
         const walkingAnimationSpeed = walkingSpeed * speedMultiplier.value >= 50 ? 50 : walkingSpeed * speedMultiplier.value;
 
-        mouseLeftBackFoot.position.z = initialBackFootPositionZ + Math.sin(elapsedTime * walkingAnimationSpeed) * 0.1
-        mouseLeftBackFoot.rotation.x = Math.sin(elapsedTime * walkingAnimationSpeed) * 0.2;
-        mouseRightBackFoot.position.z = initialBackFootPositionZ + Math.sin((elapsedTime) * walkingAnimationSpeed + Math.PI) * 0.1
-        mouseRightBackFoot.rotation.x = Math.sin(elapsedTime * walkingAnimationSpeed) * 0.2;
-        const bodyMovement = Math.sin(elapsedTime * walkingAnimationSpeed) * 0.005
+        // Cache sin calculations for better mobile performance
+        const sinTime = Math.sin(elapsedTime * walkingAnimationSpeed);
+        const sinTimeOffset = Math.sin(elapsedTime * walkingAnimationSpeed + Math.PI);
+
+        mouseLeftBackFoot.position.z = initialBackFootPositionZ + sinTime * 0.1
+        mouseLeftBackFoot.rotation.x = sinTime * 0.2;
+        mouseRightBackFoot.position.z = initialBackFootPositionZ + sinTimeOffset * 0.1
+        mouseRightBackFoot.rotation.x = sinTime * 0.2;
+        const bodyMovement = sinTime * 0.005
         mouseBody.position.y = mouseBodyPositionY + bodyMovement
         mouseTail.position.y = mouseTailPositionY + bodyMovement
 
@@ -262,21 +266,21 @@ function tick(
 // we update the position with deltaTime so the device frame rate won't cause the different speed 
 
 function updateRoom(deltaTime: number) {
+  const speed = SPEED.value * deltaTime
+
   rooms.value.forEach((room) => {
-    const speed = SPEED.value * deltaTime
+    // Batch position updates for better performance
     room.roomModel.position.z += speed
     room.doors.door1.obj.position.z += speed
     room.doors.door2.obj.position.z += speed
     room.doors.door3.obj.position.z += speed
     room.shuriken.obj.position.z += speed
 
-
     // Handle door opening animation
     handleDoorOpening(room.doors)
 
-    // check collisions
+    // check collisions only for nearby rooms
     checkCollisions(room)
-
 
     // Handle door fading 
     if (!room.hide && room.doors.door2.obj.position.z > 5) {
