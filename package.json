@@ -9,8 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.1.11",
+    "axios": "^1.10.0",
     "gsap": "^3.13.0",
     "lil-gui": "^0.20.0",
+    "tailwindcss": "^4.1.11",
     "three": "^0.177.0",
     "vue": "^3.5.13"
   },

@@ -5,11 +5,11 @@ import gsap from "gsap";
 import type { Ref } from "vue";
 import { useShadowManager } from "./useShadowManager";
 
-export interface KeyboardControls {
-  setupKeyboardControls: () => void;
+export interface MouseMovementControls {
   handleLeftMovement: () => void;
   handleRightMovement: () => void;
   handleJump: () => void;
+  initializeMovement: (animationParams: MouseAnimationParams) => void;
 }
 
 export interface MouseAnimationParams {
@@ -23,14 +23,12 @@ export interface MouseAnimationParams {
   shadow: THREE.Mesh;
 }
 
-export function useKeyboardControls(
-  gameStart: Ref<boolean>,
-  gameOver: Ref<boolean>,
+export function useMouseMovement(
   jump: Ref<boolean>,
   speedMultiplier: { value: number },
   playMoveSound: (speedMultiplier: number) => void,
   playJumpSound: (speedMultiplier: number) => void
-): KeyboardControls & { initializeControls: (animationParams: MouseAnimationParams) => void } {
+): MouseMovementControls {
   const { updateShadowForJump, updateShadowPosition } = useShadowManager();
 
   let mouseModel: THREE.Group;
@@ -42,7 +40,7 @@ export function useKeyboardControls(
   let controls: OrbitControls;
   let shadow: THREE.Mesh;
 
-  const initializeControls = (animationParams: MouseAnimationParams) => {
+  const initializeMovement = (animationParams: MouseAnimationParams) => {
     mouseModel = animationParams.mouseModel;
     mouseRightBackFoot = animationParams.mouseRightBackFoot;
     mouseLeftBackFoot = animationParams.mouseLeftBackFoot;
@@ -51,30 +49,6 @@ export function useKeyboardControls(
     camera = animationParams.camera;
     controls = animationParams.controls;
     shadow = animationParams.shadow;
-  };
-
-  const handleKeydown = (e: KeyboardEvent) => {
-    if (e.target !== document.body) return;
-
-    const { code } = e;
-
-    // Only prevent default for keys we actually handle
-    const handledKeys = ["ArrowLeft", "ArrowRight", "ArrowUp"];
-    if (handledKeys.includes(code)) {
-      e.preventDefault();
-    }
-
-    // Only handle movement if game has started
-    if (!gameStart.value || gameOver.value) return;
-
-    // Handle movement
-    if (code === "ArrowLeft") handleLeftMovement();
-    if (code === "ArrowRight") handleRightMovement();
-    if (code === "ArrowUp" && !jump.value) handleJump();
-  };
-
-  const setupKeyboardControls = () => {
-    window.addEventListener("keydown", handleKeydown);
   };
 
   const handleLeftMovement = () => {
@@ -235,10 +209,9 @@ export function useKeyboardControls(
   };
 
   return {
-    setupKeyboardControls,
     handleLeftMovement,
     handleRightMovement,
     handleJump,
-    initializeControls,
+    initializeMovement,
   };
 }

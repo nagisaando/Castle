@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import { computed, useTemplateRef, watch } from 'vue'
+import gsap from 'gsap'
+import type { LeaderboardEntry } from '../api'
+import GameOverModal from './GameOverModal.vue'
+
 interface Props {
   assetsLoaded: boolean
   totalProgress: number
@@ -6,198 +11,121 @@ interface Props {
   gameStart: boolean
   gameOver: boolean
   distance: number
-  showGameOverMessage: boolean
+  showGameOverMessage: boolean,
+  leaderBoard: LeaderboardEntry[]
 }
 
 interface Emits {
   startGame: []
   restartGame: []
-  handleLeftMovement: []
-  handleRightMovement: []
-  handleJump: []
+  submitScore: [username: string, score: number],
+  updateLeaderboard: [LeaderboardEntry[]]
 }
 
-defineProps<Props>()
-defineEmits<Emits>()
+const props = defineProps<Props>()
+const emit = defineEmits<Emits>()
+const bestScore = computed(() => {
+  // If leaderboard is empty or has less than 10 scores, it's always a high score
+  if (!props.leaderBoard.length || props.leaderBoard.length < 10) {
+    return true
+  }
 
-// CSS variables for v-bind
-const textColor = 'white'
-const fontSizeL = '2rem'
-const fontSizeM = '1.5rem'
-const spacingM = '1rem'
-const spacingL = '2rem'
+  // Check if current score is higher than the lowest score in top 10
+  const lowestScore = props.leaderBoard[props.leaderBoard.length -
+    1]?.score || 0
+  return props.distance > lowestScore
+})
+
+const distanceText = useTemplateRef('distanceText')
+
+watch(() => props.distance, (newDistance, oldDistance) => {
+  if (newDistance % 10 === 0 && newDistance !== 0 && newDistance !== oldDistance) {
+    gsap.to(distanceText.value, {
+      color: '#fd9a00',
+      duration: 0.4,
+      ease: "elastic.out(0.8,0.3)",
+      scale: 1.5,
+      y: -10,
+      rotate: 2,
+      onComplete: () => {
+        gsap.to(distanceText.value, {
+          duration: 0.2,
+          ease: "elastic.out(0.8,0.3)",
+          y: 0,
+          scale: 1,
+          color: 'white',
+          rotate: 0
+        }
+        )
+      }
+    })
+  }
+})
+
 </script>
 
 <template>
-  <div class="layer">
-    <div v-if="!assetsLoaded" class="loading-overlay">
+  <div ref="layer" class="absolute inset-0">
+    <div v-if="!assetsLoaded" class="centered text-white text-3xl md:text-3xl">
       <p>Loading... {{ totalProgress }}%</p>
     </div>
 
-    <div v-if="assetsLoaded && showButton" class="game-start">
-      <button @click="$emit('startGame')">Game Start</button>
-      <div class="key-info">
-        <p><span class="key">&lt;</span>: move left</p>
-        <p><span class="key">&gt;</span>: move right</p>
-        <p><span class="key">&#x22C0;</span>: jump</p>
+    <div v-if="assetsLoaded && showButton" class="centered">
+      <button @click="$emit('startGame')"
+        class="md:text-2xl border-2 border-white bg-transparent text-white hover:-translate-y-0.5 cursor-pointer rounded px-6 py-2">Game
+        Start</button>
+      <div class="flex justify-center">
+        <div class="text-sm text-left mt-8 text-white">
+          <p class="py-2">
+            <span class="key-hint">&lt;</span>
+            <span class="key-hint">A</span>
+            <span class="mobile-hint">SWIPE LEFT
+              &lt;&lt;</span>
+            move left
+          </p>
+          <p class="py-2 mt-0.5">
+            <span class="key-hint">&gt;</span>
+            <span class="key-hint">D</span>
+            <span class="mobile-hint">SWIPE RIGHT
+              &gt;&gt;</span>
+            move right
+          </p>
+          <p class="py-2 mt-0.5">
+            <span class="key-hint">&#x22C0;</span>
+            <span class="key-hint">Space</span>
+            <span class="key-hint">W</span>
+            <span class="mobile-hint">SWIPE TOP &#x22C0;</span>
+            jump
+          </p>
+        </div>
       </div>
     </div>
 
-    <div class="info">
-      <p class="distance">Distance: {{ Math.floor(distance) }}</p>
-      <div v-if="gameStart" class="key-info">
-        <p><span class="key">&lt;</span>: move left</p>
-        <p><span class="key">&gt;</span>: move right</p>
-        <p><span class="key">&#x22C0;</span>: jump</p>
-      </div>
-    </div>
+    <p v-if="!gameOver && gameStart" ref="distanceText" class="text-6xl text-center mt-26 font-bold text-white">{{
+      distance
+    }}</p>
 
-    <p class="credit">Sound by <a href="https://www.zapsplat.com/" target="_blank">ZapSplat</a></p>
+    <p class="absolute bottom-4 right-8 text-white">Sound by <a href="https://www.zapsplat.com/" target="_blank"
+        class="hover:text-amber-500">ZapSplat</a></p>
 
-    <div v-if="showGameOverMessage" class="game-over">
-      <p>Game over...</p>
-      <button @click="$emit('restartGame')">try again</button>
-    </div>
-
-    <!-- this is ui for mobile -->
-    <div class="mobile-handle-buttons" v-if="gameStart && !gameOver">
-      <button @click="$emit('handleLeftMovement')">&#9664;</button>
-      <button @click="$emit('handleJump')">🔼</button>
-      <button @click="$emit('handleRightMovement')"> &#9654;</button>
-    </div>
+    <GameOverModal :show="showGameOverMessage" :distance="distance" :best-score="bestScore" :leader-board="leaderBoard"
+      @restart-game="emit('restartGame')" @submit-score="(username, score) => emit('submitScore', username, score)"
+      @updateLeaderboard="(leaderboard) => emit('updateLeaderboard', leaderboard)" />
   </div>
 </template>
 
 <style scoped>
-/* Variables now use v-bind */
+@reference "../style.css";
 
-/* UI Elements */
-.layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+.key-hint {
+  @apply hidden md:inline border border-white px-4 py-2 mr-4;
 }
 
-button {
-  font-size: v-bind(fontSizeL);
-  border: 2px solid v-bind(textColor);
-  background-color: transparent;
-  color: v-bind(textColor);
+.mobile-hint {
+  @apply inline-block md:hidden border border-white px-4 py-2 mr-4 w-[138px];
 }
 
-.key {
-  border: 1px solid v-bind(textColor);
-  padding: v-bind(spacingM) v-bind(spacingL);
-  margin-right: v-bind(spacingM);
-}
-
-/* Layout & Containers */
-.credit {
-  position: absolute;
-  right: v-bind(spacingL);
-  bottom: v-bind(spacingM);
-  color: v-bind(textColor);
-}
-
-.info {
-  position: absolute;
-  right: v-bind(spacingL);
-  top: v-bind(spacingM);
-  color: v-bind(textColor);
-  text-align: right;
-}
-
-.info .distance {
-  font-size: v-bind(fontSizeL);
-}
-
-.info .key-info {
-  text-align: left;
-  color: v-bind(textColor);
-}
-
-.info .key-info p {
-  padding: 0.2rem 0;
-}
-
-.info .key-info .key {
-  padding: 0.2rem 0.4rem;
-  margin-right: 0.6rem;
-}
-
-/* Overlays */
-.loading-overlay,
-.game-start,
-.game-over {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-}
-
-.loading-overlay {
-  color: v-bind(textColor);
-  font-size: v-bind(fontSizeL);
-}
-
-.game-start .key-info {
-  font-size: 1.3rem;
-  text-align: left;
-  margin-top: v-bind(spacingL);
-  color: v-bind(textColor);
-}
-
-.game-start .key-info p {
-  padding: v-bind(spacingM) 0;
-}
-
-.game-over p {
-  font-size: 3rem;
-  margin-bottom: 0.5rem;
-  color: black;
-  font-weight: 500;
-}
-
-.game-over button {
-  text-wrap: nowrap;
-}
-
-/* Mobile Specific */
-.mobile-handle-buttons {
-  display: none;
-  /* Hidden by default */
-}
-
-@media only screen and (max-width: 500px) {
-  button {
-    font-size: v-bind(fontSizeM);
-  }
-
-  .game-over p {
-    font-size: v-bind(fontSizeM);
-  }
-
-  .info .distance {
-    font-size: v-bind(fontSizeM);
-  }
-
-  .key-info {
-    display: none;
-  }
-
-  .mobile-handle-buttons {
-    display: block;
-    position: absolute;
-    bottom: 10%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-  }
-
-  .mobile-handle-buttons button {
-    padding: 1rem;
-  }
+.centered {
+  @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full text-center;
 }
 </style>

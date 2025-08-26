@@ -57,14 +57,11 @@ export function useRoomManager(
 
     room.position.set(0, 0, zPosition);
 
-    door1.position.y = POSITIONS.DOOR_Y;
     door1.position.z = zPosition + 0.03;
     door1.position.x = -POSITIONS.DOOR_X_OFFSET;
 
-    door2.position.y = POSITIONS.DOOR_Y;
     door2.position.z = zPosition - 0.02;
 
-    door3.position.y = POSITIONS.DOOR_Y;
     door3.position.z = zPosition + 0.03;
     door3.position.x = POSITIONS.DOOR_X_OFFSET;
 

@@ -2,31 +2,40 @@
 import * as THREE from "three"
 import { POSITIONS, SIZES, initialSpeed } from './constants'
 import type { Door, DoorGroup, RoomGroup } from './types';
-import { onMounted, useTemplateRef, watchEffect } from 'vue'
+import { onMounted, useTemplateRef, watchEffect, ref } from 'vue'
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
 import { useThreeSetup } from './composables/useThreeSetup'
 import { useModelLoader } from './composables/useModelLoader'
 import { useModelInitialization } from './composables/useModelInitialization'
 import { useGameState } from './composables/useGameState'
 import { useAudioManager } from './composables/useAudioManager'
-import { useKeyboardControls, type MouseAnimationParams } from './composables/useKeyboardControls'
+import { useMouseMovement, type MouseAnimationParams } from './composables/useMouseMovement'
+import { useKeyboard } from './composables/useKeyboard'
 import { useEnvironment } from './composables/useEnvironment'
 import { useCharacterManager } from './composables/useCharacterManager'
 import { useRoomManager } from './composables/useRoomManager'
+import { useMobileGestures } from './composables/useMobileGestures'
 import { getRandomShurikenPosition } from './utils'
+import { isMobile } from './utils/mobile'
 import GameUI from './components/GameUI.vue'
 
 import gsap from "gsap";
+import { getLeaderBoard, postScore, startGameSession, type LeaderboardEntry } from "./api";
 
 
 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
+// Leaderboard data
+const leaderboardData = ref<LeaderboardEntry[]>([])
+
 // Canvas
 const canvas = useTemplateRef('canvas')
+const gameUI = useTemplateRef<InstanceType<typeof GameUI> | null>('game-ui')
+
+
 
 // Initialize game state
-const isMobile = window.matchMedia("(max-width: 500px)").matches;
-const roomBufferSize = isMobile ? 3 : 6;
+const roomBufferSize = isMobile ? 3 : 4;
 const {
   // Core game state
   gameOver,
@@ -66,20 +75,38 @@ const {
   gameBackground
 } = useAudioManager()
 
-// Initialize keyboard controls at root level
+// Initialize mouse movement controls
 const {
-  setupKeyboardControls,
   handleLeftMovement,
   handleRightMovement,
   handleJump,
-  initializeControls: initializeKeyboardControls
-} = useKeyboardControls(
-  gameStart,
-  gameOver,
+  initializeMovement
+} = useMouseMovement(
   jump,
   speedMultiplier,
   playMoveSound,
   playJumpSound
+)
+
+// Initialize keyboard controls
+const { setupKeyboardControls } = useKeyboard(
+  gameStart,
+  gameOver,
+  jump,
+  handleLeftMovement,
+  handleRightMovement,
+  handleJump
+)
+
+// Initialize mobile gestures
+const { setupMobileGestures } = useMobileGestures(
+  gameUI,
+  handleJump,
+  handleLeftMovement,
+  handleRightMovement,
+  gameStart,
+  gameOver,
+  jump
 )
 
 // Initialize environment setup
@@ -176,7 +203,6 @@ function tick(
 
 
   const animate = () => {
-
     const elapsedTime = clock.getElapsedTime()
     const deltaTime = elapsedTime - previousTime
     previousTime = elapsedTime
@@ -194,11 +220,15 @@ function tick(
       if (!jump.value) {
         const walkingAnimationSpeed = walkingSpeed * speedMultiplier.value >= 50 ? 50 : walkingSpeed * speedMultiplier.value;
 
-        mouseLeftBackFoot.position.z = initialBackFootPositionZ + Math.sin(elapsedTime * walkingAnimationSpeed) * 0.1
-        mouseLeftBackFoot.rotation.x = Math.sin(elapsedTime * walkingAnimationSpeed) * 0.2;
-        mouseRightBackFoot.position.z = initialBackFootPositionZ + Math.sin((elapsedTime) * walkingAnimationSpeed + Math.PI) * 0.1
-        mouseRightBackFoot.rotation.x = Math.sin(elapsedTime * walkingAnimationSpeed) * 0.2;
-        const bodyMovement = Math.sin(elapsedTime * walkingAnimationSpeed) * 0.005
+        // Cache sin calculations for better mobile performance
+        const sinTime = Math.sin(elapsedTime * walkingAnimationSpeed);
+        const sinTimeOffset = Math.sin(elapsedTime * walkingAnimationSpeed + Math.PI);
+
+        mouseLeftBackFoot.position.z = initialBackFootPositionZ + sinTime * 0.1
+        mouseLeftBackFoot.rotation.x = sinTime * 0.2;
+        mouseRightBackFoot.position.z = initialBackFootPositionZ + sinTimeOffset * 0.1
+        mouseRightBackFoot.rotation.x = sinTime * 0.2;
+        const bodyMovement = sinTime * 0.005
         mouseBody.position.y = mouseBodyPositionY + bodyMovement
         mouseTail.position.y = mouseTailPositionY + bodyMovement
 
@@ -236,21 +266,21 @@ function tick(
 // we update the position with deltaTime so the device frame rate won't cause the different speed 
 
 function updateRoom(deltaTime: number) {
+  const speed = SPEED.value * deltaTime
+
   rooms.value.forEach((room) => {
-    const speed = SPEED.value * deltaTime
+    // Batch position updates for better performance
     room.roomModel.position.z += speed
     room.doors.door1.obj.position.z += speed
     room.doors.door2.obj.position.z += speed
     room.doors.door3.obj.position.z += speed
     room.shuriken.obj.position.z += speed
 
-
     // Handle door opening animation
     handleDoorOpening(room.doors)
 
-    // check collisions
+    // check collisions only for nearby rooms
     checkCollisions(room)
-
 
     // Handle door fading 
     if (!room.hide && room.doors.door2.obj.position.z > 5) {
@@ -413,11 +443,22 @@ async function checkCollisions(room: RoomGroup) {
 
     mouseModelBoundingBox.setFromObject(mouseModel)
 
-    if (obstaclesBoundingBoxes.some(boundBox => mouseBoundingSphere.intersectsBox(boundBox))) {
-      gameOver.value = true
-      await crashMouse()
-      showGameOverMessage.value = true
+    try {
+      if (obstaclesBoundingBoxes.some(boundBox => mouseBoundingSphere.intersectsBox(boundBox))) {
+        gameOver.value = true
+        try {
+          const [leaderboard] = await Promise.all([getLeaderBoard(), crashMouse()])
+          leaderboardData.value = leaderboard
+        } catch (leaderboardErr) {
+          console.log("Failed to load leaderboard:", leaderboardErr)
+          leaderboardData.value = []
+        }
+        showGameOverMessage.value = true
+      }
+    } catch (err) {
+      console.log(err)
     }
+
   }
 }
 
@@ -466,8 +507,16 @@ let controls: OrbitControls
 let scene: THREE.Scene
 let renderer: THREE.WebGLRenderer
 
-function startGame() {
+async function startGame() {
   if (!showButton.value) return
+
+  try {
+    // Start game session on backend
+    await startGameSession()
+  } catch (error) {
+    console.error('Failed to start game session:', error)
+    // Continue with game even if session creation fails
+  }
 
   // Unlock audio context on user interaction
   // since mobile has difficulty to play sound when user did not interact the mobile screen well
@@ -611,8 +660,9 @@ onMounted(async () => {
     shadow
   }
 
-  initializeKeyboardControls(animationParams)
+  initializeMovement(animationParams)
   setupKeyboardControls()
+  setupMobileGestures()
 
   // Start game loop
   tick(renderer, camera, controls)
@@ -766,8 +816,25 @@ function moveRoomsToStartPlace(): Promise<void> {
 }
 
 
+async function handleSubmitScore(username: string, score: number) {
+  try {
+    await postScore(username, score)
+  } catch (error) {
+    console.error('Failed to submit score:', error)
+    // You could add error handling UI here if needed
+  }
+}
+
 async function restartGame() {
   showGameOverMessage.value = false
+
+  try {
+    // Start new game session on restart
+    await startGameSession()
+  } catch (error) {
+    console.error('Failed to start game session:', error)
+    // Continue with game even if session creation fails
+  }
 
   gsap.to(catFeetModel.position, {
     z: 8,
@@ -800,20 +867,14 @@ async function restartGame() {
 <template>
   <canvas class="webgl" ref="canvas"></canvas>
 
-  <GameUI :assetsLoaded="assetsLoaded" :totalProgress="totalProgress" :showButton="showButton" :gameStart="gameStart"
-    :gameOver="gameOver" :distance="distance" :showGameOverMessage="showGameOverMessage" @startGame="startGame"
-    @restartGame="restartGame" @handleLeftMovement="handleLeftMovement" @handleRightMovement="handleRightMovement"
-    @handleJump="handleJump" />
+  <GameUI ref="game-ui" :assetsLoaded="assetsLoaded" :totalProgress="totalProgress" :showButton="showButton"
+    :gameStart="gameStart" :gameOver="gameOver" :distance="Math.floor(distance)"
+    :showGameOverMessage="showGameOverMessage" :leaderBoard="leaderboardData" @startGame="startGame"
+    @restartGame="restartGame" @submitScore="handleSubmitScore"
+    @updateLeaderboard="(updatedLeaderboard) => leaderboardData = updatedLeaderboard" />
 </template>
 
 <style>
-/* Base Styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
 html,
 body {
   overflow: hidden;
