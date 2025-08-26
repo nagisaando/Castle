@@ -28,6 +28,10 @@ const showForm = ref(false)
 const submitted = ref(false)
 
 function handleSubmit() {
+  if (!username.value?.trim()) {
+    return
+  }
+
   const distance = props.distance
 
   localStorage.setItem('username', username.value)
@@ -83,7 +87,7 @@ function handleSubmit() {
 
 function handleShowForm() {
   const name = localStorage.getItem('username')
-  if (!name) {
+  if (!name || !name.trim()) {
     showForm.value = true
   } else {
     username.value = name
@@ -124,9 +128,9 @@ function restartGame() {
 
       <div v-if="!showForm" class="flex justify-center mt-8 text-2xl">
         <button v-if="bestScore && !submitted" @click="handleShowForm"
-          class="bg-amber-500 border-transparent font-medium w-[362px] mr-4 hover:-translate-y-0.5 cursor-pointer rounded px-6 py-2 text-sm md:text-base ">Leave
-          your
-          legacy</button>
+          class="bg-amber-500 border-transparent font-medium w-[362px] mr-4 hover:-translate-y-0.5 cursor-pointer rounded px-6 py-2 text-sm md:text-base">Leave
+          your legacy
+        </button>
         <button @click="restartGame"
           class=" bg-stone-800 border-transparent font-medium w-[362px] hover:-translate-y-0.5 cursor-pointer rounded px-6 py-2 text-sm md:text-base">try
           again</button>

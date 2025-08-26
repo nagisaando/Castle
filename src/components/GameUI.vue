@@ -101,7 +101,7 @@ watch(() => props.distance, (newDistance, oldDistance) => {
 
     <p v-if="!gameOver && gameStart" ref="distanceText" class="text-6xl text-center mt-26 font-bold text-white">{{
       distance
-    }}</p>
+      }}</p>
 
     <p class="absolute bottom-4 right-8 text-white">Sound by <a href="https://www.zapsplat.com/" target="_blank"
         class="hover:text-amber-500">ZapSplat</a></p>
