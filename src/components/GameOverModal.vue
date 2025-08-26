@@ -32,7 +32,7 @@ function handleSubmit() {
     return
   }
 
-  const distance = props.distance
+  const distance = Math.min(props.distance, 1000)
 
   localStorage.setItem('username', username.value)
   emit('submitScore', username.value, distance)
