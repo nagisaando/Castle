@@ -38,7 +38,7 @@ function handleSubmit() {
   emit('submitScore', username.value, distance)
 
   // Find insertion position
-  const insertPosition = props.leaderBoard.findIndex((item, i) => {
+  const insertPosition = props.leaderBoard.findIndex((item) => {
     return distance > item.score
   })
   const finalPosition = insertPosition === -1 ?
