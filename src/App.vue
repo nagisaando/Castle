@@ -2,7 +2,7 @@
 import * as THREE from "three"
 import { POSITIONS, SIZES, initialSpeed } from './constants'
 import type { Door, DoorGroup, RoomGroup } from './types';
-import { onMounted, useTemplateRef, watchEffect, ref, type ComponentPublicInstance } from 'vue'
+import { onMounted, useTemplateRef, watchEffect, ref } from 'vue'
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
 import { useThreeSetup } from './composables/useThreeSetup'
 import { useModelLoader } from './composables/useModelLoader'
@@ -446,8 +446,13 @@ async function checkCollisions(room: RoomGroup) {
     try {
       if (obstaclesBoundingBoxes.some(boundBox => mouseBoundingSphere.intersectsBox(boundBox))) {
         gameOver.value = true
-        const [leaderboard] = await Promise.all([getLeaderBoard(), crashMouse()])
-        leaderboardData.value = leaderboard
+        try {
+          const [leaderboard] = await Promise.all([getLeaderBoard(), crashMouse()])
+          leaderboardData.value = leaderboard
+        } catch (leaderboardErr) {
+          console.log("Failed to load leaderboard:", leaderboardErr)
+          leaderboardData.value = []
+        }
         showGameOverMessage.value = true
       }
     } catch (err) {
@@ -870,13 +875,6 @@ async function restartGame() {
 </template>
 
 <style>
-/* Base Styles */
-/* * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-} */
-
 html,
 body {
   overflow: hidden;

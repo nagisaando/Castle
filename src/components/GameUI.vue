@@ -66,33 +66,35 @@ watch(() => props.distance, (newDistance, oldDistance) => {
 
 <template>
   <div ref="layer" class="absolute inset-0">
-    <div v-if="!assetsLoaded"
-      class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full text-center text-white text-3xl md:text-3xl">
+    <div v-if="!assetsLoaded" class="centered text-white text-3xl md:text-3xl">
       <p>Loading... {{ totalProgress }}%</p>
     </div>
 
-    <div v-if="assetsLoaded && showButton"
-      class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full text-center">
+    <div v-if="assetsLoaded && showButton" class="centered">
       <button @click="$emit('startGame')"
         class="md:text-2xl border-2 border-white bg-transparent text-white hover:-translate-y-0.5 cursor-pointer rounded px-6 py-2">Game
         Start</button>
       <div class="flex justify-center">
         <div class="text-sm text-left mt-8 text-white">
           <p class="py-2">
-            <span class="hidden md:inline border border-white px-4 py-2 mr-4">&lt;</span>
-            <span class="inline-block  md:hidden border border-white px-4 py-2 mr-4 w-[138px]">SWIPE LEFT
+            <span class="key-hint">&lt;</span>
+            <span class="key-hint">A</span>
+            <span class="mobile-hint">SWIPE LEFT
               &lt;&lt;</span>
             move left
           </p>
           <p class="py-2 mt-0.5">
-            <span class="hidden md:inline border border-white px-4 py-2 mr-4">&gt;</span>
-            <span class="inline-block md:hidden border border-white px-4 py-2 mr-4 w-[138px]">SWIPE RIGHT
+            <span class="key-hint">&gt;</span>
+            <span class="key-hint">D</span>
+            <span class="mobile-hint">SWIPE RIGHT
               &gt;&gt;</span>
             move right
           </p>
           <p class="py-2 mt-0.5">
-            <span class="hidden md:inline border border-white px-4 py-2 mr-4">&#x22C0;</span>
-            <span class="inline-block md:hidden border border-white px-4 py-2 mr-4 w-[138px]">SWIPE TOP &#x22C0;</span>
+            <span class="key-hint">&#x22C0;</span>
+            <span class="key-hint">Space</span>
+            <span class="key-hint">W</span>
+            <span class="mobile-hint">SWIPE TOP &#x22C0;</span>
             jump
           </p>
         </div>
@@ -101,7 +103,7 @@ watch(() => props.distance, (newDistance, oldDistance) => {
 
     <p v-if="!gameOver && gameStart" ref="distanceText" class="text-6xl text-center mt-26 font-bold text-white">{{
       distance
-      }}</p>
+    }}</p>
 
     <p class="absolute bottom-4 right-8 text-white">Sound by <a href="https://www.zapsplat.com/" target="_blank"
         class="hover:text-amber-500">ZapSplat</a></p>
@@ -114,4 +116,16 @@ watch(() => props.distance, (newDistance, oldDistance) => {
 
 <style scoped>
 @reference "../style.css";
+
+.key-hint {
+  @apply hidden md:inline border border-white px-4 py-2 mr-4;
+}
+
+.mobile-hint {
+  @apply inline-block md:hidden border border-white px-4 py-2 mr-4 w-[138px];
+}
+
+.centered {
+  @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full text-center;
+}
 </style>
