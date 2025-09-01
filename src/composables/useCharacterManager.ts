@@ -9,7 +9,11 @@ export function useCharacterManager() {
     mouseModel: THREE.Group,
     mouseBody: THREE.Object3D,
     scene: THREE.Scene
-  ): { mouseBoundingSphere: THREE.Sphere; shadow: THREE.Mesh } => {
+  ): {
+    mouseBoundingSphere: THREE.Sphere;
+    shadow: THREE.Mesh;
+    // debugSphere: THREE.Mesh;
+  } => {
     mouseModel.position.set(0, POSITIONS.MOUSE_Y, POSITIONS.MOUSE_START_Z);
     scene.add(mouseModel);
 
@@ -37,26 +41,31 @@ export function useCharacterManager() {
       sphereRadius
     );
 
-    // Optional debug visualization (commented out)
+    // Debug visualization for mouse bounding sphere
     // const debugSphereGeometry = new THREE.SphereGeometry(1, 16, 16);
     // const debugSphereMaterial = new THREE.MeshBasicMaterial({
     //   color: 0xffff00,
     //   wireframe: true,
     //   transparent: true,
-    //   opacity: 0.5
+    //   opacity: 0.5,
     // });
-    // const debugSphere = new THREE.Mesh(debugSphereGeometry, debugSphereMaterial);
+    // const debugSphere = new THREE.Mesh(
+    //   debugSphereGeometry,
+    //   debugSphereMaterial
+    // );
     // debugSphere.position.copy(mouseBoundingSphere.center);
     // debugSphere.scale.setScalar(mouseBoundingSphere.radius);
     // scene.add(debugSphere);
 
     return { mouseBoundingSphere, shadow };
+    // return { mouseBoundingSphere, shadow, debugSphere };
   };
 
   const updateMouseBoundingSphere = (
     mouseModel: THREE.Group,
     mouseBody: THREE.Object3D,
     mouseBoundingSphere: THREE.Sphere
+    // debugSphere?: THREE.Mesh
   ) => {
     // 1. Update all world matrices in the hierarchy
     //    - mouseBody's world position depends on parent (mouseModel) transforms
@@ -69,9 +78,11 @@ export function useCharacterManager() {
     //    - mouseBoundingSphere.center will now match visual position
     mouseBody.getWorldPosition(mouseBoundingSphere.center);
 
-    // Debug visualization (optional)
-    // debugSphere.position.copy(mouseBoundingSphere.center)
-    // debugSphere.scale.setScalar(mouseBoundingSphere.radius)
+    // Update debug visualization if provided
+    // if (debugSphere) {
+    //   debugSphere.position.copy(mouseBoundingSphere.center);
+    //   debugSphere.scale.setScalar(mouseBoundingSphere.radius);
+    // }
   };
 
   return {

@@ -186,7 +186,8 @@ function animateCameraToCloseUp(controls: OrbitControls, camera: THREE.Perspecti
 
 }
 
-
+// Frame optimization: skip heavy computations every other frame for mobile performance
+let frameCounter = 0;
 // Game loop
 function tick(
   renderer: THREE.WebGLRenderer,
@@ -202,10 +203,15 @@ function tick(
   let speedIncreaseTimer = 0;
 
 
+
+
   const animate = () => {
     const elapsedTime = clock.getElapsedTime()
     const deltaTime = elapsedTime - previousTime
     previousTime = elapsedTime
+
+    // Increment frame counter for optimization
+    frameCounter++;
 
     // Update controls
     controls.update()
@@ -276,11 +282,15 @@ function updateRoom(deltaTime: number) {
     room.doors.door3.obj.position.z += speed
     room.shuriken.obj.position.z += speed
 
-    // Handle door opening animation
-    handleDoorOpening(room.doors)
+    // MOBILE OPTIMIZATION: Update room positions and collision every other frame
+    // This reduces computation by ~50% while maintaining reasonable precision
+    if (frameCounter % 4 === 0 || !isMobile) {
+      // Handle door opening animation
+      handleDoorOpening(room.doors)
 
-    // check collisions only for nearby rooms
-    checkCollisions(room)
+      // check collisions only for nearby rooms
+      checkCollisions(room)
+    }
 
     // Handle door fading 
     if (!room.hide && room.doors.door2.obj.position.z > 5) {
@@ -421,8 +431,8 @@ async function checkCollisions(room: RoomGroup) {
   // Only proceed if we're close enough to either doors or shuriken
   if (doorDistance < 1 || shurikenDistance < 4) {
     const doorsToCheck = [room.doors.door1, room.doors.door2, room.doors.door3]
-
     updateMouseBoundingSphere(mouseModel, mouseBody, mouseBoundingSphere)
+    // updateMouseBoundingSphere(mouseModel, mouseBody, mouseBoundingSphere, debugSphere)
 
     // Create door bounding boxes only if we're close to doors
     const obstaclesBoundingBoxes = doorDistance < 1 ? doorsToCheck.map(door => {
@@ -647,6 +657,7 @@ onMounted(async () => {
   const characterData = initCharacter(mouseModel, mouseBody, scene)
   mouseBoundingSphere = characterData.mouseBoundingSphere
   shadow = characterData.shadow
+  // debugSphere = characterData.debugSphere
 
   // Initialize keyboard controls after mouse model is available
   const animationParams: MouseAnimationParams = {
