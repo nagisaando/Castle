@@ -5,8 +5,8 @@ const instance = axios.create({
   timeout: 10000,
   withCredentials: true,
   headers: {
-    'x-api-key': 'H4oJvBoI6G2Q7fNDJzy8eaSxwG7qCgTacLbqYHR0'
-  }
+    "x-api-key": import.meta.env.VITE_X_API_KEY,
+  },
 });
 
 export interface LeaderboardEntry {
