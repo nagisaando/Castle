@@ -20,7 +20,7 @@ import { isMobile } from './utils/mobile'
 import GameUI from './components/GameUI.vue'
 
 import gsap from "gsap";
-import { getLeaderBoard, postScore, startGameSession, type LeaderboardEntry } from "./api";
+import { getLeaderBoard, postScore, type LeaderboardEntry } from "./api";
 
 
 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -520,14 +520,6 @@ let renderer: THREE.WebGLRenderer
 async function startGame() {
   if (!showButton.value) return
 
-  try {
-    // Start game session on backend
-    await startGameSession()
-  } catch (error) {
-    console.error('Failed to start game session:', error)
-    // Continue with game even if session creation fails
-  }
-
   // Unlock audio context on user interaction
   // since mobile has difficulty to play sound when user did not interact the mobile screen well
   gameBackground.play();
@@ -838,14 +830,6 @@ async function handleSubmitScore(username: string, score: number) {
 
 async function restartGame() {
   showGameOverMessage.value = false
-
-  try {
-    // Start new game session on restart
-    await startGameSession()
-  } catch (error) {
-    console.error('Failed to start game session:', error)
-    // Continue with game even if session creation fails
-  }
 
   gsap.to(catFeetModel.position, {
     z: 8,

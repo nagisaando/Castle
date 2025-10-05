@@ -23,8 +23,3 @@ export async function getLeaderBoard(): Promise<LeaderboardEntry[]> {
 export async function postScore(username: string, score: number) {
   await instance.post("/api/score", { username, score });
 }
-
-export async function startGameSession() {
-  const response = await instance.post("/api/game/start");
-  return response.data;
-}
